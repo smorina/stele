@@ -1,0 +1,9 @@
+# Content policy: raster frontend defaults.
+name: default
+dpi: 900                    # render resolution; 900 DPI letter page ~= 75.7 MP (streamed per page)
+threshold: fixed            # fixed | otsu
+fixed_threshold: 128
+fit_mode: fit               # fit (scale mixed page sizes into the pseudopage box) | strict
+unsupported_features: raster
+expected_min_text_pt: 8.0   # feeds the closed-form WARNING only; hard gates are measured
+tag_images: false

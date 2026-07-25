@@ -1,0 +1,13 @@
+# Layout: patent FIG. 12 pseudopage grid on a 6" plate.
+name: pseudopage-6in
+pseudopage_width_um: 1980.0   # source: patent example (0.078" = 1.98 mm)
+pseudopage_height_um: 2560.0  # source: patent example (0.101" ~= 2.56 mm)
+pitch_x_um: 2100.0            # assumption: 120 um gutters
+pitch_y_um: 2600.0            # assumption
+title_text: ""                # default: plate name from the manifest
+title_height_um: 2500.0       # source: patent naked-eye brick text example (~2.5 mm)
+title_band_um: 4000.0
+fiducial_size_um: 1500.0
+orientation_glyph_um: 1200.0
+mirrored: false
+polarity: clear_field

@@ -1,0 +1,12 @@
+# Flagship demo: the patent that specified this archive, compiled onto one plate.
+inputs:
+  - path: ../../document.pdf
+    pages: all
+profiles:
+  fab: ../profiles/fab/generic-laserwriter.yaml
+  reader: ../profiles/reader/na025-580nm.yaml
+  content: ../profiles/content/default.yaml
+  layout: ../profiles/layout/pseudopage-6in.yaml
+output:
+  gds: ../out/patent_demo.gds
+  plate_name: STELE-0001

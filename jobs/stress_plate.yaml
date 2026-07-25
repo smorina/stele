@@ -1,0 +1,14 @@
+# 600-page unique-content stress plate (NOT full capacity — that is ~3,700
+# usable slots and is the M6 performance-pass acceptance job).
+# Generate the input first: uv run python scripts/gen_stress.py 600
+inputs:
+  - path: ../out/stress.pdf
+    pages: all
+profiles:
+  fab: ../profiles/fab/generic-laserwriter.yaml
+  reader: ../profiles/reader/na025-580nm.yaml
+  content: ../profiles/content/default.yaml
+  layout: ../profiles/layout/pseudopage-6in.yaml
+output:
+  gds: ../out/stress_plate.gds
+  plate_name: STRESS-0600

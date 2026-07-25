@@ -1,0 +1,61 @@
+name: ci
+
+# Prototype: automatic CI is disabled — GitHub-hosted private-repo runners
+# (~7 GB) cannot hold the golden tier (11.2 GB peak RSS measured for
+# test_build_golden alone), so push/PR/schedule triggers were removed.
+# `workflow_dispatch` runs the fast job (lint + unit + property, ~30 s);
+# the nightly job stays defined but dormant until a schedule trigger (and
+# a runner with enough memory) is restored.
+on:
+  workflow_dispatch:
+
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --frozen
+      - run: uv run ruff check src tests testdata
+      - run: uv run pytest tests -q -m "not slow"
+
+  nightly:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --frozen
+      - run: uv run pytest tests -q # includes slow tier (dense stress plate)
+      - name: 600-page stress plate (full capacity ~3,700 slots is the M6 job)
+        run: |
+          uv run python - <<'EOF'
+          import sys
+          sys.path.insert(0, "testdata/gen"); sys.path.insert(0, ".")
+          import synthetic
+          from pathlib import Path
+          from tests.conftest import write_job
+          from stele.build import build_job
+          tmp = Path("out/nightly").resolve(); tmp.mkdir(parents=True, exist_ok=True)
+          pdf = synthetic.stress_corpus(str(tmp / "stress.pdf"), 600)
+          job = write_job(tmp, "profiles", pdf, gds_name="stress.gds")
+          import time, resource
+          t0 = time.time()
+          report = build_job(job, verify=False, preview=True)
+          elapsed = time.time() - t0
+          peak_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+          print(report["gds"], report["timings_s"], f"elapsed={elapsed:.0f}s peak={peak_kb/1e6:.2f}GB")
+          assert report["plan"]["placed_pages"] == 600
+          assert elapsed < 3600, f"600-page build took {elapsed:.0f}s"
+          assert report["gds"]["size_mb"] < 1500
+          assert peak_kb / 1e6 < 4.0, "peak RSS over 4 GB"
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-previews
+          path: |
+            out/nightly/*.png
+            out/nightly/**/*.png
+          if-no-files-found: ignore

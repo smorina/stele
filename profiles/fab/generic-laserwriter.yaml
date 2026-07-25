@@ -1,0 +1,22 @@
+# Fab profile: generic laser mask writer.
+# STATUS: engineering defaults — NOT a confirmed vendor rule deck. Output built
+# against this profile is a software-verified candidate handoff, not fab-ready.
+name: generic-laserwriter
+plate_width_mm: 152.4      # assumption: 6" square photomask blank (patent does not fix plate size)
+plate_height_mm: 152.4     # assumption
+edge_exclusion_mm: 3.0     # source: patent example (handling/edge-chip allowance, FIG. 12)
+min_feature_um: 1.0        # assumption: cheap laser-writer floor; confirm with vendor
+min_space_um: 1.0          # assumption
+process_bias_um: 0.0       # assumption: zero until a vendor states etch bias
+dbu_nm: 1.0
+layer: 1
+datatype: 0
+max_vertices_per_polygon: 4000  # keeps XY records < 0x7FFF bytes (signed-16-bit readers)
+max_file_size_mb: 2000
+density_min: 0.0
+density_max: 1.0
+notes: >
+  Unconfirmed vendor contract. RFQ checklist in docs/physical-validation.md:
+  layer/datatype map, tone convention, allowed elements, hierarchy/AREF limits,
+  vertex/cell/file limits, process bias, density rules, dense-pattern
+  inspection policy, required marks.
