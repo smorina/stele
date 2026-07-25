@@ -38,7 +38,7 @@ development plan and status.
 implementation; US 11,993,421 B2 belongs to its inventors, and nothing in
 this repository grants rights to practice the patent.
 
-**AI USE:** Built leveraging Claude (Fable 5) via Claude Code.
+**AI USE:** Built leveraging Claude (Fable 5) via Claude Code, and GPT 5.6 Sol.
 
 ## The interesting bits
 
