@@ -13,6 +13,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+_LAUNCH_TIMEOUT_SECONDS = 90
+
 
 def _read_session(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -41,6 +43,31 @@ def _wait_until_removed(path: Path, timeout: float = 10) -> bool:
     while path.exists() and time.monotonic() < deadline:
         time.sleep(0.05)
     return not path.exists()
+
+
+def _print_launcher_log(home: Path) -> None:
+    log_path = home / "logs" / "stele-ui.log"
+    try:
+        contents = log_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"Packaged launcher log unavailable: {exc}", file=sys.stderr)
+        return
+    print(f"\n--- {log_path} ---", file=sys.stderr)
+    print(contents.rstrip(), file=sys.stderr)
+    print("--- end packaged launcher log ---", file=sys.stderr)
+
+
+def _run_launcher(executable: Path, environment: dict[str, str], home: Path) -> None:
+    try:
+        subprocess.run(
+            [str(executable)],
+            env=environment,
+            check=True,
+            timeout=_LAUNCH_TIMEOUT_SECONDS,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        _print_launcher_log(home)
+        raise
 
 
 def main() -> int:
@@ -76,20 +103,10 @@ def main() -> int:
 
     first: dict[str, Any] | None = None
     try:
-        subprocess.run(
-            [str(executable)],
-            env=environment,
-            check=True,
-            timeout=30,
-        )
+        _run_launcher(executable, environment, home)
         first = _read_session(session_path)
 
-        subprocess.run(
-            [str(executable)],
-            env=environment,
-            check=True,
-            timeout=30,
-        )
+        _run_launcher(executable, environment, home)
         second = _read_session(session_path)
         if second != first:
             raise RuntimeError("second packaged launch replaced the active server session")

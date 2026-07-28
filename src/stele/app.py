@@ -14,6 +14,7 @@ from typing import TextIO
 
 _SERVER_ARGUMENT = "--stele-server"
 _SUPPRESS_BROWSER_ENVIRONMENT = "STELE_SUPPRESS_BROWSER"
+_STARTUP_TIMEOUT_SECONDS = 60
 
 
 def _redirect_output() -> TextIO | None:
@@ -119,7 +120,7 @@ def _launch_or_reopen(home: Path) -> int:
 
     with InstanceCoordinator(home) as instance:
         if not instance.try_acquire():
-            launch_url = instance.wait_for_url(timeout=15)
+            launch_url = instance.wait_for_url(timeout=_STARTUP_TIMEOUT_SECONDS)
             if launch_url is not None:
                 print(f"Stele is already running; reopening {launch_url}")
                 _open_browser(launch_url)
@@ -131,7 +132,7 @@ def _launch_or_reopen(home: Path) -> int:
 
     worker = _spawn_server()
     instance = InstanceCoordinator(home)
-    launch_url = instance.wait_for_url(timeout=15)
+    launch_url = instance.wait_for_url(timeout=_STARTUP_TIMEOUT_SECONDS)
     if launch_url is None:
         return_code = worker.poll()
         detail = f" (server exited with status {return_code})" if return_code is not None else ""
