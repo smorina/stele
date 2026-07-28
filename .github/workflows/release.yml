@@ -122,6 +122,15 @@ jobs:
           pattern: release-*
           path: release-assets
           merge-multiple: true
+      - name: Flatten the wheel into the release asset directory
+        shell: bash
+        run: |
+          wheel="$(find release-assets -mindepth 2 -type f -name '*.whl' -print -quit)"
+          if [[ -z "$wheel" ]]; then
+            echo "::error::The downloaded source artifact does not contain a wheel."
+            exit 1
+          fi
+          mv "$wheel" release-assets/
       - name: List release assets
         run: find release-assets -maxdepth 1 -type f -printf '%f\n' | sort
       - uses: softprops/action-gh-release@v2
