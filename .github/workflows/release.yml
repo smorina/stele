@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  verify-and-package:
+  verify-source:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,11 +33,136 @@ jobs:
         run: |
           unzip -l dist/*.whl | grep 'stele/ui/static/app.html'
           unzip -l dist/*.whl | grep 'stele/assets/bluenoise/vnc64.npy'
-      - name: Build the double-click installer bundle
-        run: git archive --format=zip --prefix=Stele/ -o "Stele-${GITHUB_REF_NAME}.zip" HEAD
+      - name: Build source artifact
+        shell: bash
+        run: |
+          archive="Stele-${GITHUB_REF_NAME}-source.zip"
+          git archive --format=zip --prefix=Stele/ -o "$archive" HEAD
+          sha256sum "$archive" dist/*.whl | sed 's#  dist/#  #' > source-sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-source
+          path: |
+            Stele-${{ github.ref_name }}-source.zip
+            dist/*.whl
+            source-sha256.txt
+          if-no-files-found: error
+
+  package-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            minimum_macos: "13.0"
+          - runner: macos-15-intel
+            arch: x86_64
+            minimum_macos: "14.0"
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Build and smoke-test Stele.app
+        env:
+          STELE_MACOS_MIN_VERSION: ${{ matrix.minimum_macos }}
+        run: packaging/build-macos-app.sh
+      - name: Archive the portable app
+        shell: bash
+        run: |
+          archive="Stele-${GITHUB_REF_NAME}-macos-${{ matrix.arch }}.zip"
+          ditto -c -k --sequesterRsrc --keepParent dist/Stele.app "$archive"
+          shasum -a 256 "$archive" > "$archive.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-${{ matrix.arch }}
+          path: |
+            Stele-${{ github.ref_name }}-macos-${{ matrix.arch }}.zip
+            Stele-${{ github.ref_name }}-macos-${{ matrix.arch }}.zip.sha256
+          if-no-files-found: error
+
+  package-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Build and smoke-test Stele.exe
+        shell: pwsh
+        run: ./packaging/build-windows-app.ps1
+      - name: Archive the portable app
+        shell: pwsh
+        run: |
+          $archive = "Stele-$env:GITHUB_REF_NAME-windows-x86_64.zip"
+          Compress-Archive -Path dist/Stele -DestinationPath $archive -CompressionLevel Optimal
+          $hash = (Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant()
+          "$hash  $archive" | Set-Content -Path "$archive.sha256" -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-x86_64
+          path: |
+            Stele-${{ github.ref_name }}-windows-x86_64.zip
+            Stele-${{ github.ref_name }}-windows-x86_64.zip.sha256
+          if-no-files-found: error
+
+  publish-release:
+    needs:
+      - verify-source
+      - package-macos
+      - package-windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+      - name: List release assets
+        run: find release-assets -maxdepth 1 -type f -printf '%f\n' | sort
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: |
-            Stele-${{ github.ref_name }}.zip
-            dist/*.whl
+          fail_on_unmatched_files: true
+          body: |
+            ### macOS
+
+            Download the ZIP matching your Mac:
+
+            - `macos-arm64` for Apple Silicon (M1 or newer)
+            - `macos-x86_64` for Intel
+
+            Extract the ZIP and double-click **Stele.app**. Stele is self-contained:
+            Python, the GDS engines, and all other prerequisites are included.
+
+            This hobby-project build is not signed with a paid Apple Developer ID.
+            On first launch, macOS will block it. After attempting to open it, go
+            to **System Settings → Privacy & Security → Open Anyway**. This approval
+            is normally needed once for that downloaded copy.
+
+            Launching Stele again reopens its existing private browser session
+            instead of starting another server. Use **Quit Stele** in the page to
+            stop it; active builds must finish or be cancelled first.
+
+            ### Windows
+
+            Download `windows-x86_64`, extract the complete **Stele** folder, and
+            double-click **Stele.exe**. Keep the `_internal` folder beside it.
+            Python, the GDS engines, and all other prerequisites are included.
+
+            This hobby-project build is unsigned. Windows may show **Windows
+            protected your PC** on first launch. If the ZIP came from this release,
+            choose **More info**, confirm the app name is Stele, then choose **Run
+            anyway**. Managed computers may prohibit unsigned applications.
+
+            As on macOS, launching Stele again reopens the existing private browser
+            session, and **Quit Stele** stops the local server safely.
+
+            The source ZIP supports the Linux installer and the optional managed
+            runtime installer on Windows. It is also the corresponding source for
+            the AGPL application bundles.
+          files: release-assets/*

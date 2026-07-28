@@ -337,6 +337,10 @@ class RunManager:
                 state.detail = "Cancellation requested; stopping at the next safe boundary"
         return state.public()
 
+    def has_active_run(self) -> bool:
+        with self._lock:
+            return any(state.status in {"queued", "running"} for state in self._runs.values())
+
     def artifact(self, run_id: str, artifact_id: str) -> Path:
         state = self._state(run_id)
         path = state.artifact_paths.get(artifact_id)

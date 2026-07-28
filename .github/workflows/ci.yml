@@ -3,9 +3,9 @@ name: ci
 # Prototype: automatic CI is disabled — GitHub-hosted private-repo runners
 # (~7 GB) cannot hold the golden tier (11.2 GB peak RSS measured for
 # test_build_golden alone), so push/PR/schedule triggers were removed.
-# `workflow_dispatch` runs the fast job (lint + unit + property, ~30 s);
-# the nightly job stays defined but dormant until a schedule trigger (and
-# a runner with enough memory) is restored.
+# `workflow_dispatch` runs the fast job plus a native Windows packaging smoke
+# test. The nightly job stays defined but dormant until a schedule trigger
+# (and a runner with enough memory) is restored.
 on:
   workflow_dispatch:
 
@@ -14,10 +14,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
       - run: uv sync --frozen
       - run: uv run ruff check src tests testdata
       - run: uv run pytest tests -q -m "not slow"
+
+  package-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Build and smoke-test the portable Windows app
+        shell: pwsh
+        run: ./packaging/build-windows-app.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Stele-windows-x86_64-${{ github.sha }}
+          path: dist/Stele
+          if-no-files-found: error
 
   nightly:
     if: github.event_name == 'schedule'
@@ -25,7 +44,9 @@ jobs:
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
       - run: uv sync --frozen
       - run: uv run pytest tests -q # includes slow tier (dense stress plate)
       - name: 600-page stress plate (full capacity ~3,700 slots is the M6 job)

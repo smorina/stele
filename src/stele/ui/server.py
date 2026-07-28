@@ -9,6 +9,7 @@ import sys
 import threading
 import urllib.parse
 import webbrowser
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
 from pathlib import Path
@@ -124,7 +125,8 @@ class SteleHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt: str, *args: object) -> None:
-        print(f"stele ui: {self.address_string()} {fmt % args}", file=sys.stderr)
+        if sys.stderr is not None:
+            print(f"stele ui: {self.address_string()} {fmt % args}", file=sys.stderr)
 
     def do_GET(self) -> None:  # noqa: N802
         try:
@@ -178,6 +180,25 @@ class SteleHandler(BaseHTTPRequestHandler):
                 self._send_json(201, document.public())
                 return
             body = self._json_body()
+            if parsed.path == "/api/quit":
+                if self.server.runs.has_active_run():
+                    self._send_json(
+                        409,
+                        {
+                            "error": (
+                                "A build is still running. Wait for it to finish or "
+                                "cancel it before quitting Stele."
+                            )
+                        },
+                    )
+                    return
+                self._send_json(200, {"status": "stopping"})
+                threading.Thread(
+                    target=self.server.shutdown,
+                    name="stele-shutdown",
+                    daemon=True,
+                ).start()
+                return
             if parsed.path == "/api/calc":
                 self._send_json(200, _page_plan(self.server.store, body))
                 return
@@ -287,7 +308,8 @@ class SteleHandler(BaseHTTPRequestHandler):
                 self.wfile.write(chunk)
 
     def _internal_error(self, exc: Exception) -> None:
-        print(f"stele ui internal error: {type(exc).__name__}: {exc}", file=sys.stderr)
+        if sys.stderr is not None:
+            print(f"stele ui internal error: {type(exc).__name__}: {exc}", file=sys.stderr)
         self._send_json(
             500,
             {"error": "Stele hit an unexpected local error. Open Diagnostics for support details."},
@@ -305,8 +327,11 @@ def serve(
     home: str | Path | None = None,
     port: int = 0,
     open_browser: bool = True,
+    on_ready: Callable[[SteleServer], None] | None = None,
 ) -> int:
     server = create_server(home=home, port=port)
+    if on_ready is not None:
+        on_ready(server)
     print(f"Stele is ready at {server.launch_url}")
     print("Documents stay on this computer. Press Ctrl-C to stop.")
     if open_browser:

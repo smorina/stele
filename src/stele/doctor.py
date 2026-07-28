@@ -75,7 +75,7 @@ def run_doctor(home: str | Path | None = None) -> dict[str, Any]:
                     "name": distribution,
                     "ok": False,
                     "detail": f"{type(exc).__name__}: {exc}",
-                    "fix": "Run the installer again to restore the locked dependency set.",
+                    "fix": "Replace Stele with a fresh copy of the same release.",
                 }
             )
 
@@ -111,7 +111,7 @@ def run_doctor(home: str | Path | None = None) -> dict[str, Any]:
             "name": "Blue-noise asset",
             "ok": asset_ok,
             "detail": asset_detail,
-            "fix": "Reinstall Stele; a packaged data file is missing." if not asset_ok else "",
+            "fix": "Replace Stele; a packaged data file is missing." if not asset_ok else "",
         }
     )
 
@@ -137,7 +137,7 @@ def run_doctor(home: str | Path | None = None) -> dict[str, Any]:
             "name": "Independent GDS round trip",
             "ok": roundtrip_ok,
             "detail": roundtrip_detail,
-            "fix": "Run the installer again; the GDS engines cannot interoperate."
+            "fix": "Replace Stele; the bundled GDS engines cannot interoperate."
             if not roundtrip_ok
             else "",
         }

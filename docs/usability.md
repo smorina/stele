@@ -119,31 +119,38 @@ usually dies, replaced by a green checkmark. Non-negotiables:
 
 ## 4. Install and launch
 
-### 4.1 Strategy: `uv` as the installer, not as a prerequisite
+### 4.1 Strategy: portable macOS/Windows apps; `uv` fallback installers
 
 `uv` already solves the hard parts — it installs a managed CPython 3.12
 itself, needs no admin rights, no system Python, and no compiler, and
 `uv sync --frozen` reproduces the exact locked wheel set. The gap is only that
 the user must know to install it and must type commands afterwards.
 
-So: **ship a bootstrap script that installs `uv`, syncs, and creates a
-launcher.** One command, or one double-click.
+The original bootstrap remains useful for Linux and as a Windows fallback.
+For the two desktop targets with complete native wheels, release
+**self-contained portable apps** instead: PyInstaller's one-folder bundle looks
+like one application in macOS Finder, and like `Stele.exe` plus an `_internal`
+dependency folder on Windows. Both carry Python and every native prerequisite,
+start the local UI, and open the browser without installing files or showing a
+terminal.
 
 ```
-install.sh / install.ps1
+install.sh / install.ps1 (Linux and optional Windows fallback)
   ├─ detect OS + arch, refuse unsupported combos with a real explanation
   ├─ install uv to ~/.local/bin (or %LOCALAPPDATA%) if absent — no admin, no PATH surgery
   ├─ fetch/copy stele into ~/.stele/app
   ├─ uv sync --frozen            (pulls managed CPython 3.12 + 10 wheels)
   ├─ stele doctor                (see §4.4 — fails loudly here, not later)
   └─ create launcher:
-       macOS   ~/Applications/Stele.command  + optional .app wrapper
        Linux   ~/.local/share/applications/stele.desktop
        Windows Desktop\Stele.lnk  →  pythonw -m stele.ui
 ```
 
-The launcher runs `stele ui`, which starts the local server and opens the
-browser (§5). The user never sees a terminal.
+The launcher or portable app starts the local server and opens the browser
+(§5). The macOS and Windows apps hold a per-user OS lock. Launching either app
+again opens the active tokenized URL instead of starting another server, and
+the page has a Quit action that is disabled server-side while a build is
+active. The user never needs a terminal.
 
 `~/.stele/` layout:
 
@@ -184,18 +191,18 @@ one-line refusal.
 
 | Option | Verdict |
 |---|---|
-| **uv bootstrap script** (proposed) | One command; installs its own Python; reproducible via the existing lockfile; trivially updatable; no signing infrastructure. Cost: a script per OS family, and the first run downloads ~200 MB. |
-| PyInstaller / Nuitka one-file binary | Tempting, rejected for now. klayout + opencv + pymupdf native extensions make hook maintenance a standing tax; needs a CI build matrix per OS; needs Apple notarization and a Windows code-signing certificate or users see malware warnings — and unsigned binaries are *worse* for a trust-critical tool. Revisit only if a signed-release pipeline exists. |
+| **Portable PyInstaller macOS app** | Selected for macOS. Architecture-native CI bundles and smoke-tests Python, klayout, opencv, pymupdf, pdfium, resources, and metadata. No install or first-run dependency download. Cost: large artifacts, maintained hooks, and one documented Gatekeeper override because the hobby release is unsigned. |
+| **Portable PyInstaller Windows app** | Selected for Windows x86-64. A native CI runner creates a ZIP containing `Stele.exe` and `_internal`, then runs the same diagnostics and single-instance lifecycle smoke as macOS. No install or prerequisite download. Cost: large artifact and a documented SmartScreen path because the hobby release is unsigned. |
+| Tauri shell with Python sidecar | Deferred. It could provide a native window, Dock lifecycle, menus, and richer reopening behavior, but adds a Rust/web build and sidecar lifecycle to the release. It would not remove Gatekeeper for an unsigned download. Track as a later desktop-shell evaluation. |
+| **uv bootstrap script** | Retained for Linux and as an optional Windows fallback. Installs its own Python; reproducible via the existing lockfile; trivially updatable; no signing infrastructure. Cost: a script per OS family and a first-run download. |
+| PyInstaller/Nuitka one-file binary | Rejected. Extracting native dependencies on every launch adds startup and scanning overhead; both portable apps use the more inspectable one-folder form. |
 | conda / pixi | Solves native deps well, but adds a second package manager to explain and duplicates the lockfile as a source of truth. |
 | Docker | Fine for the mask-shop/CI path, hostile for persona 1 and 2: Docker Desktop install, licensing, file-sharing permissions, and no native file dialogs. Document as an advanced option. |
 | Hosted web service | Rejected outright. Users' archival corpora are exactly the documents they will not upload, and multi-GB RSS per build makes it an operational trap. |
 
 **Licensing consequence of distribution.** stele is AGPL-3.0-or-later and
-PyMuPDF is AGPL (risk 9 in the plan: "*if distributed*"). The bootstrap
-approach keeps distribution as source + PyPI wheels, which is the cleanest
-posture. Any future single-file binary is a *distribution of a combined work*
-and needs the corresponding-source obligation designed in, not discovered
-afterwards.
+PyMuPDF is AGPL (risk 9 in the plan: "*if distributed*"). Each bundled desktop
+release is published beside its corresponding source ZIP and public source tag.
 
 ### 4.4 `stele doctor`
 

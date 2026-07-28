@@ -5,26 +5,84 @@ a production or fab-ready result. Stele runs locally: PDFs are not uploaded to
 a service, and the browser page only talks to a private server on this
 computer.
 
-## From a GitHub release
+## macOS: portable application
 
-1. Download `Stele-v….zip` from the latest GitHub release and extract it.
-2. On macOS, double-click **Install Stele.command**. On Windows, double-click
-   **Install Stele.cmd**. On Linux, run `./install.sh`.
-3. The installer downloads the locked application dependencies, checks both
-   independent GDS engines, and creates a Stele launcher.
+1. Download the app ZIP matching the Mac from the latest GitHub release:
+   - `macos-arm64` for a Mac whose **About This Mac** window lists an Apple
+     chip such as M1, M2, M3, or newer;
+   - `macos-x86_64` for a Mac whose **About This Mac** window lists an Intel
+     processor.
+2. Extract the ZIP and double-click **Stele.app**.
+3. The first time, macOS will block this unsigned hobby-project build. After
+   attempting to open it, open **System Settings → Privacy & Security**, scroll
+   to Security, choose **Open Anyway**, and confirm **Open**.
+4. The normal browser opens to Stele's private local page. Future launches of
+   that downloaded copy are ordinary double-clicks.
 
-The first install needs an internet connection and roughly 300 MB of free
-space. It does not need an administrator password or a preinstalled Python.
+Closing the browser tab does not stop Stele. Double-clicking **Stele.app** while
+it is already running reopens the same private browser session; it does not
+start a second server. Choose **Quit Stele** in the page when finished. The app
+refuses to quit while a build is queued or running, so cancel it or wait for it
+to finish first.
 
-Supported first-release platforms:
+Stele.app is portable. It includes Python, gdstk, KLayout, OpenCV, both PDF
+engines, and every other runtime prerequisite. It does not require an
+administrator password, developer tools, uv, a preinstalled Python, or an
+internet connection after download. It can run from Downloads or be moved to
+Applications.
+
+Gatekeeper approval cannot be removed from a downloaded unsigned executable.
+Stele does not ask users to run a command that disables Gatekeeper or removes
+the quarantine attribute.
+
+Supported macOS platforms:
 
 - macOS 13 or newer on Apple Silicon;
 - macOS 14 or newer on Intel;
-- Windows 10 or newer on x86-64;
-- x86-64 Linux with glibc 2.28 or newer.
 
-Linux ARM and Windows ARM are rejected before installation because the native
-GDS dependencies do not publish compatible wheels.
+Each release app is built and smoke-tested on the same processor architecture
+as its bundled native dependencies. The smoke test imports every required
+engine, loads packaged data, and performs a gdstk-write to KLayout-read
+round trip before the ZIP is published.
+
+## Windows: portable application
+
+1. On an x86-64 computer running Windows 10 or newer, download the release ZIP
+   whose name ends in `windows-x86_64.zip`.
+2. Extract the complete **Stele** folder. Do not move **Stele.exe** away from
+   its `_internal` folder.
+3. Double-click **Stele.exe**. The normal browser opens to Stele's private
+   local page.
+4. Because this hobby-project build is unsigned, Windows may show **Windows
+   protected your PC** on first launch. If the ZIP came from Stele's official
+   GitHub release, choose **More info**, confirm that the app name is Stele,
+   then choose **Run anyway**. Some managed computers prohibit unsigned apps.
+
+The Windows app is portable and self-contained. It includes Python, both GDS
+engines, both PDF engines, OpenCV, and every other runtime prerequisite. It
+installs nothing, needs no administrator password, and works without an
+internet connection after download.
+
+Closing the browser does not stop Stele. Double-clicking **Stele.exe** again
+reopens the same private session instead of starting a second server. Choose
+**Quit Stele** in the page when finished; active builds must finish or be
+cancelled first.
+
+Windows on Arm is unsupported because gdstk, KLayout, and OpenCV do not publish
+compatible Arm wheels.
+
+## Linux and optional managed-runtime installers
+
+On x86-64 Linux with glibc 2.28 or newer, download and extract the release's
+source ZIP, then run `./install.sh`.
+
+The source ZIP also retains **Install Stele.cmd** as a fallback for Windows
+x86-64 users who prefer a managed uv environment. The managed-runtime path
+needs an internet connection on first installation and roughly 300 MB of free
+space, but no administrator password or preinstalled Python.
+
+Linux Arm is rejected before installation because gdstk does not publish a
+compatible wheel.
 
 ## First build
 
@@ -82,5 +140,9 @@ unguessable token; requests are also protected by Host and Origin checks. The
 page has a restrictive content-security policy and loads no analytics, fonts,
 scripts, images, or update checks from the internet.
 
-Closing the launcher terminal stops the local server. Completed run folders
-remain on disk.
+The local server runs as a background Stele process after the launcher exits.
+Its per-user lock and private session file are stored under `~/.stele/` on
+macOS/Linux or `%USERPROFILE%\.stele\` on Windows. The session file contains
+the loopback URL needed to reopen the page and is protected by the user's file
+permissions. Choosing **Quit Stele** stops the server and removes that session.
+Completed run folders remain on disk.

@@ -254,6 +254,7 @@
       <div class="header-actions">
         <span class="local-chip">● Local &amp; offline</span>
         <button class="quiet-button" id="doctor-button" type="button">Diagnostics</button>
+        <button class="quiet-button" id="quit-button" type="button">Quit Stele</button>
       </div>
     </header>
     <section class="hero">
@@ -690,6 +691,28 @@
       }
     }
 
+    async function quitStele() {
+      if (!confirm("Quit Stele and stop its local server? Completed runs will remain on this computer.")) return;
+      const button = $("quit-button");
+      button.disabled = true;
+      try {
+        await api("/api/quit", { method: "POST", json: {} });
+        document.body.innerHTML = `
+          <main class="shell">
+            <section class="hero">
+              <div>
+                <span class="eyebrow">Stele stopped</span>
+                <h1>The local server<br>has quit.</h1>
+                <p class="lede">Completed runs remain on this computer. You can close this tab and double-click Stele whenever you need it again.</p>
+              </div>
+            </section>
+          </main>`;
+      } catch (error) {
+        button.disabled = false;
+        alert(error.message);
+      }
+    }
+
     $("dropzone").addEventListener("click", () => $("file-input").click());
     $("dropzone").addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") { event.preventDefault(); $("file-input").click(); }
@@ -717,6 +740,7 @@
     });
     $("doctor-button").addEventListener("click", showDoctor);
     $("doctor-close").addEventListener("click", () => $("doctor-dialog").close());
+    $("quit-button").addEventListener("click", quitStele);
     if (!token) {
       showError("upload-error", "This page is missing its private session token. Close it and launch Stele again.");
     }

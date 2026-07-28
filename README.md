@@ -72,10 +72,31 @@ explicit `unverified` for anything built with checks skipped.
 
 ### For people who do not use a terminal
 
-Download and extract the latest `Stele-v….zip` GitHub release, then
-double-click **Install Stele.command** on macOS or **Install Stele.cmd** on
-Windows. The installer brings its own Python, checks the GDS engines, and adds
-a Stele launcher. Linux users run `./install.sh`.
+On macOS, download and extract the app ZIP for your processor from the latest
+GitHub release:
+
+- `macos-arm64` for Apple Silicon (M1 or newer);
+- `macos-x86_64` for Intel.
+
+Double-click **Stele.app**. It is portable and includes Python, both GDS
+engines, and every other prerequisite; it does not install anything. Because
+this hobby project does not use a paid Apple Developer ID, the first launch
+needs one Gatekeeper approval under **System Settings → Privacy & Security →
+Open Anyway**. Subsequent launches of that copy are normal double-clicks.
+If Stele is already running, double-clicking it again reopens the same private
+browser session instead of starting another server. Use **Quit Stele** in the
+page when finished; Stele will not quit in the middle of a build.
+
+On Windows x86-64, download the `windows-x86_64` ZIP, extract the complete
+**Stele** folder, and double-click **Stele.exe**. It is likewise portable and
+self-contained. Windows may show **Windows protected your PC** because this
+hobby build is unsigned; for a ZIP downloaded from the official release,
+choose **More info**, confirm the app name, then **Run anyway**. Keep the
+`_internal` folder beside the executable.
+
+Linux users download the source ZIP and run `./install.sh`. The source ZIP
+also retains **Install Stele.cmd** as an optional managed-runtime fallback on
+Windows.
 
 The launcher opens a private local browser UI: drop in PDFs, see plate capacity
 before doing expensive work, build a one-page trial, then build and independently
@@ -192,6 +213,9 @@ criterion.
 ```sh
 uv run pytest -m "not slow"   # fast tier (~30 s)
 uv run pytest                 # + whole-plate golden builds and explicit RSS budgets
+
+# macOS only: build and smoke-test a portable app for this Mac's architecture
+packaging/build-macos-app.sh
 ```
 
 ## Layout

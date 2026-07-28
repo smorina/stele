@@ -181,6 +181,8 @@ def test_local_server_auth_upload_and_capacity(tmp_path):
         assert "All ${doc.page_count} pages" in html
         assert "single page numbers or inclusive ranges" in html
         assert "Why the “not checked” list is here" in html
+        assert 'id="quit-button"' in html
+        assert 'api("/api/quit"' in html
         assert 'id="cancel-button" type="button" hidden' in html
         assert "setCancelButtonVisible(true);" in html
         assert html.count("setCancelButtonVisible(false);") == 4
@@ -237,6 +239,42 @@ def test_local_server_auth_upload_and_capacity(tmp_path):
         response = connection.getresponse()
         response.read()
         assert response.status == 403
+    finally:
+        connection.close()
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
+def test_quit_refuses_active_build_then_stops_server(tmp_path):
+    server = create_server(home=tmp_path)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host, port = server.server_address
+    connection = http.client.HTTPConnection(host, port, timeout=10)
+    headers = {
+        "Content-Type": "application/json",
+        "Content-Length": "2",
+        "X-Stele-Token": server.token,
+        "Origin": server.origin,
+    }
+    try:
+        server.runs.has_active_run = lambda: True
+        connection.request("POST", "/api/quit", body="{}", headers=headers)
+        response = connection.getresponse()
+        payload = json.loads(response.read())
+        assert response.status == 409
+        assert "still running" in payload["error"]
+        assert thread.is_alive()
+
+        server.runs.has_active_run = lambda: False
+        connection.request("POST", "/api/quit", body="{}", headers=headers)
+        response = connection.getresponse()
+        payload = json.loads(response.read())
+        assert response.status == 200
+        assert payload == {"status": "stopping"}
+        thread.join(timeout=2)
+        assert not thread.is_alive()
     finally:
         connection.close()
         server.shutdown()
