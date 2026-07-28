@@ -30,7 +30,8 @@ sits in the same family, with one practical advantage: photomask production
 is an ordinary industrial service, so a plate can be written today without
 inventing any hardware.
 
-**STATUS:** Output is a software-verified candidate handoff. See
+**STATUS: PROTOTYPE.** Output is a software-verified candidate handoff, not a
+production or fab-ready result. See
 [issue #2](https://github.com/smorina/stele/issues/2) for the full
 development plan and status.
 
@@ -69,14 +70,35 @@ explicit `unverified` for anything built with checks skipped.
 
 ## Quickstart
 
+### For people who do not use a terminal
+
+Download and extract the latest `Stele-v….zip` GitHub release, then
+double-click **Install Stele.command** on macOS or **Install Stele.cmd** on
+Windows. The installer brings its own Python, checks the GDS engines, and adds
+a Stele launcher. Linux users run `./install.sh`.
+
+The launcher opens a private local browser UI: drop in PDFs, see plate capacity
+before doing expensive work, build a one-page trial, then build and independently
+verify the complete plate. Inputs, profiles, manifest, GDS, preview, and report
+stay together under `~/.stele/runs/`. See [the installation guide](docs/install.md).
+
+### Command line
+
 ```sh
 uv sync
+uv run stele ui                                  # local browser interface
+uv run stele doctor                              # installation diagnostics
 uv run stele validate jobs/patent_demo.yaml   # cross-profile checks
 uv run stele calc jobs/patent_demo.yaml       # capacity / resolution math
 uv run stele build jobs/patent_demo.yaml      # -> out/patent_demo.gds + report + preview
 uv run stele verify jobs/patent_demo.yaml     # re-verify an existing GDS
 uv run stele simulate jobs/patent_demo.yaml   # through-the-microscope view of a page
 ```
+
+The first operability release intentionally exposes a small, safe settings
+surface. The CLI and [reference](docs/reference.md) remain the path for custom
+vendor profiles and all expert fields. [docs/usability.md](docs/usability.md)
+records the analysis, decisions, shipped scope, and follow-on plan.
 
 Beyond text: `image_mode: dither` renders continuous-tone images as
 DRC-clean blue-noise halftones; `color_mode: rgb_triad` emits the patent's
@@ -169,7 +191,7 @@ criterion.
 
 ```sh
 uv run pytest -m "not slow"   # fast tier (~30 s)
-uv run pytest                 # + whole-plate golden builds (~45 min, ~12 GB RAM)
+uv run pytest                 # + whole-plate golden builds and explicit RSS budgets
 ```
 
 ## Layout

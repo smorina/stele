@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stele prototype · PDF to verified photomask</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f4f1e9;
+      --surface: #fffdf7;
+      --ink: #17201c;
+      --muted: #647069;
+      --line: #d9d7cc;
+      --deep: #143f36;
+      --mint: #d9ebe3;
+      --lime: #d6f06d;
+      --amber: #ffe1a3;
+      --red: #ffd4cc;
+      --blue: #d8e8ff;
+      --shadow: 0 18px 45px rgba(30, 42, 36, .10);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 4% 2%, rgba(214, 240, 109, .28), transparent 26rem),
+        linear-gradient(180deg, #f8f5ed 0, var(--paper) 55rem);
+      color: var(--ink);
+      font: 15px/1.55 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: -.008em;
+    }
+    button, input, select { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+      outline: 3px solid rgba(28, 105, 87, .32);
+      outline-offset: 3px;
+    }
+    .shell { width: min(1180px, calc(100% - 36px)); margin: 0 auto; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 78px;
+      border-bottom: 1px solid rgba(23, 32, 28, .12);
+    }
+    .brand { display: flex; align-items: center; gap: 9px; font-weight: 780; font-size: 19px; }
+    .prototype-chip {
+      color: #744817; background: var(--amber); border: 1px solid #dfbb76;
+      border-radius: 999px; padding: 3px 7px; font-size: 10px;
+      font-weight: 820; letter-spacing: .08em; text-transform: uppercase;
+    }
+    .header-actions { display: flex; gap: 9px; align-items: center; }
+    .local-chip {
+      color: var(--deep); background: var(--mint); border-radius: 999px;
+      padding: 6px 10px; font-size: 12px; font-weight: 720; letter-spacing: .02em;
+    }
+    .quiet-button {
+      border: 1px solid var(--line); background: rgba(255,255,255,.56); color: var(--ink);
+      border-radius: 11px; padding: 8px 12px; cursor: pointer;
+    }
+    .hero { display: grid; grid-template-columns: 1.35fr .65fr; gap: 50px; padding: 70px 0 54px; }
+    .eyebrow {
+      display: inline-flex; gap: 8px; align-items: center; color: var(--deep);
+      font-weight: 760; text-transform: uppercase; font-size: 12px; letter-spacing: .1em;
+    }
+    .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--deep); }
+    h1 {
+      font: 760 clamp(42px, 6vw, 76px)/.98 ui-serif, Georgia, serif;
+      letter-spacing: -.055em; margin: 16px 0 24px; max-width: 840px;
+    }
+    .lede { font-size: clamp(17px, 2vw, 21px); color: #46524b; max-width: 720px; margin: 0; }
+    .hero-note {
+      align-self: end; border-left: 3px solid var(--deep); padding: 4px 0 4px 20px;
+      color: var(--muted); font-size: 14px;
+    }
+    .hero-note strong { display: block; color: var(--ink); margin-bottom: 5px; font-size: 15px; }
+    .candidate {
+      background: var(--deep); color: #f7f6ed; padding: 13px 0;
+      font-size: 13px; letter-spacing: .01em;
+    }
+    .candidate .shell { display: flex; gap: 11px; align-items: center; }
+    .candidate b { color: var(--lime); white-space: nowrap; }
+    main { padding: 44px 0 90px; }
+    .workflow { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(310px, .75fr); gap: 24px; align-items: start; }
+    .stack { display: grid; gap: 18px; }
+    .card {
+      background: rgba(255, 253, 247, .91); border: 1px solid rgba(23, 32, 28, .12);
+      border-radius: var(--radius); box-shadow: 0 5px 20px rgba(30, 42, 36, .045);
+      overflow: hidden;
+    }
+    .card-head { display: flex; gap: 14px; align-items: flex-start; padding: 22px 24px 0; }
+    .step {
+      display: grid; place-items: center; min-width: 30px; height: 30px; border-radius: 50%;
+      background: var(--deep); color: white; font-weight: 780; font-size: 13px;
+    }
+    h2 { margin: 1px 0 3px; font-size: 20px; line-height: 1.2; letter-spacing: -.025em; }
+    .sub { margin: 0; color: var(--muted); font-size: 13px; }
+    .card-body { padding: 20px 24px 24px; }
+    .dropzone {
+      display: grid; place-items: center; min-height: 166px; border: 1.5px dashed #9aa49d;
+      border-radius: 14px; background: rgba(244, 241, 233, .55); text-align: center;
+      padding: 24px; transition: .18s ease; cursor: pointer;
+    }
+    .dropzone:hover, .dropzone.dragging { border-color: var(--deep); background: var(--mint); transform: translateY(-1px); }
+    .drop-icon {
+      width: 44px; height: 52px; border: 2px solid var(--deep); border-radius: 7px;
+      margin-bottom: 12px; position: relative; background: var(--surface);
+    }
+    .drop-icon::after {
+      content: "PDF"; position: absolute; bottom: 7px; left: 7px; font-size: 10px;
+      font-weight: 850; color: var(--deep); letter-spacing: .08em;
+    }
+    .dropzone strong { font-size: 16px; }
+    .dropzone span { color: var(--muted); margin-top: 4px; font-size: 13px; }
+    #file-input { position: absolute; opacity: 0; pointer-events: none; }
+    .documents { display: grid; gap: 10px; margin-top: 14px; }
+    .document {
+      display: grid; grid-template-columns: minmax(0, 1fr) 285px; gap: 16px;
+      padding: 13px 14px; border: 1px solid var(--line); border-radius: 12px; background: white;
+    }
+    .document-name { font-weight: 720; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .document-meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    label { display: block; color: #445048; font-size: 12px; font-weight: 720; margin-bottom: 6px; }
+    input, select {
+      width: 100%; border: 1px solid #c9cec9; border-radius: 10px; background: white;
+      color: var(--ink); padding: 10px 11px; min-height: 43px;
+    }
+    input:hover, select:hover { border-color: #9da69f; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field-grid .wide { grid-column: 1 / -1; }
+    .field-help { color: var(--muted); font-size: 11px; margin-top: 6px; }
+    .page-controls { min-width: 0; }
+    .all-pages {
+      display: flex; align-items: center; gap: 7px; color: var(--ink);
+      margin: 0 0 8px; font-size: 13px;
+    }
+    .all-pages input {
+      width: 17px; min-height: 17px; margin: 0; padding: 0; accent-color: var(--deep);
+    }
+    .page-controls input:disabled { background: #eeeee9; color: #89918c; }
+    .check {
+      display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line);
+      border-radius: 11px; padding: 11px; background: white;
+    }
+    .check input { width: 18px; min-height: 18px; margin: 2px 0 0; accent-color: var(--deep); }
+    .check label { margin: 0; font-size: 13px; }
+    .summary { position: sticky; top: 18px; }
+    .summary .card-body { padding-top: 23px; }
+    .plate-sketch {
+      aspect-ratio: 1; width: 100%; border-radius: 12px; background: #e4e7df;
+      border: 1px solid #c7cbc4; padding: 9%; display: grid; place-items: center; overflow: hidden;
+    }
+    .plate-inner {
+      width: 100%; height: 100%; border: 2px solid #43514a; position: relative;
+      background:
+        repeating-linear-gradient(0deg, transparent 0 7%, rgba(20,63,54,.16) 7% 7.8%),
+        repeating-linear-gradient(90deg, transparent 0 7%, rgba(20,63,54,.16) 7% 7.8%),
+        #f4f5ee;
+    }
+    .plate-inner::before, .plate-inner::after {
+      content: ""; position: absolute; left: 0; right: 0; background: var(--deep);
+    }
+    .plate-inner::before { height: 8%; top: 0; }
+    .plate-inner::after { height: 6%; bottom: 0; opacity: .75; }
+    .metrics { display: grid; gap: 13px; margin: 21px 0; }
+    .metric { display: flex; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--line); padding-bottom: 11px; }
+    .metric:last-child { border: 0; padding-bottom: 0; }
+    .metric span { color: var(--muted); }
+    .metric strong { text-align: right; }
+    .notice { border-radius: 11px; padding: 12px 13px; font-size: 12px; margin: 13px 0; background: var(--blue); }
+    .notice.warning { background: var(--amber); }
+    .actions { display: grid; gap: 9px; margin-top: 18px; }
+    .primary, .secondary, .danger {
+      border-radius: 11px; min-height: 48px; padding: 11px 16px; cursor: pointer;
+      font-weight: 760; border: 1px solid transparent;
+    }
+    .primary { background: var(--deep); color: white; }
+    .primary:hover { background: #0e3029; }
+    .primary:disabled, .secondary:disabled { opacity: .42; cursor: not-allowed; }
+    .secondary { border-color: var(--deep); color: var(--deep); background: transparent; }
+    .secondary:hover { background: var(--mint); }
+    .danger { border-color: #a54132; color: #853225; background: transparent; }
+    .danger[hidden] { display: none; }
+    .privacy { text-align: center; color: var(--muted); font-size: 11px; margin-top: 11px; }
+    .progress-wrap { display: none; }
+    .progress-wrap.visible { display: block; }
+    .progress-track { height: 9px; background: #e1e2dc; border-radius: 999px; overflow: hidden; margin: 15px 0 9px; }
+    .progress-bar { height: 100%; width: 3%; background: var(--deep); border-radius: inherit; transition: width .35s ease; }
+    .progress-label { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
+    .result-card { display: none; }
+    .result-card.visible { display: block; }
+    .verdict { border-radius: 14px; padding: 20px; border: 1px solid transparent; }
+    .verdict.pass { background: var(--mint); border-color: #a6c7b8; }
+    .verdict.pass_with_warnings { background: var(--amber); border-color: #e1ba6f; }
+    .verdict.fail { background: var(--red); border-color: #df9e91; }
+    .verdict.unverified { background: #e4e6e3; border-color: #bec4bf; }
+    .verdict-state { text-transform: uppercase; letter-spacing: .1em; font-weight: 800; font-size: 11px; }
+    .verdict h3 { font-size: 25px; margin: 5px 0; letter-spacing: -.035em; }
+    .verdict p { margin: 0; }
+    .findings { display: grid; gap: 10px; margin: 16px 0; }
+    .finding { border: 1px solid var(--line); border-radius: 11px; padding: 13px; background: white; }
+    .finding strong { display: block; margin-bottom: 3px; }
+    .finding small { display: block; color: var(--muted); }
+    .preview { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: white; margin-top: 14px; }
+    .downloads { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 15px; }
+    .download {
+      text-decoration: none; color: var(--deep); border: 1px solid var(--deep);
+      border-radius: 10px; padding: 8px 11px; font-size: 12px; font-weight: 720;
+    }
+    details { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
+    summary { cursor: pointer; font-weight: 720; }
+    code { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    dialog {
+      width: min(760px, calc(100% - 30px)); max-height: min(82vh, 740px);
+      border: 0; border-radius: 18px; padding: 0; box-shadow: var(--shadow); background: var(--surface);
+    }
+    dialog::backdrop { background: rgba(12, 25, 20, .48); backdrop-filter: blur(3px); }
+    .dialog-head { display: flex; justify-content: space-between; padding: 21px 23px; border-bottom: 1px solid var(--line); }
+    .dialog-head h2 { margin: 0; }
+    .dialog-body { padding: 21px 23px 26px; overflow: auto; }
+    .doctor-check { display: grid; grid-template-columns: 48px 160px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+    .doctor-check b.ok { color: #1f6c4e; }
+    .doctor-check b.bad { color: #a53b2d; }
+    .error-box { background: var(--red); border: 1px solid #df9e91; border-radius: 11px; padding: 12px; margin-top: 13px; display: none; }
+    .error-box.visible { display: block; }
+    .muted { color: var(--muted); }
+    @media (max-width: 820px) {
+      .hero, .workflow { grid-template-columns: 1fr; }
+      .hero { gap: 25px; padding-top: 45px; }
+      .summary { position: static; }
+      .field-grid { grid-template-columns: 1fr; }
+      .field-grid .wide { grid-column: auto; }
+    }
+    @media (max-width: 540px) {
+      .shell { width: min(100% - 22px, 1180px); }
+      .local-chip { display: none; }
+      .document { grid-template-columns: 1fr; }
+      .card-head, .card-body { padding-left: 17px; padding-right: 17px; }
+      .doctor-check { grid-template-columns: 45px 1fr; }
+      .doctor-check span:last-child { grid-column: 1 / -1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">stele <span class="prototype-chip">Prototype</span></div>
+      <div class="header-actions">
+        <span class="local-chip">● Local &amp; offline</span>
+        <button class="quiet-button" id="doctor-button" type="button">Diagnostics</button>
+      </div>
+    </header>
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Prototype · long-horizon archive compiler</span>
+        <h1>Put a document<br>on glass.</h1>
+        <p class="lede">Turn PDFs into a photomask layout, then independently check that every page survived. Your documents never leave this computer.</p>
+      </div>
+      <div class="hero-note">
+        <strong>What comes out</strong>
+        A GDSII manufacturing file, a full-plate preview, and a report that says what passed, what needs attention, and what was not checked.
+      </div>
+    </section>
+  </div>
+  <div class="candidate">
+    <div class="shell"><b>Prototype output</b><span>A software-verified candidate handoff is not a mask-shop rule deck. The result explains what was checked and what still requires vendor confirmation.</span></div>
+  </div>
+
+  <main class="shell">
+    <div class="workflow">
+      <div class="stack">
+        <section class="card">
+          <div class="card-head">
+            <span class="step">1</span>
+            <div><h2>Choose your documents</h2><p class="sub">PDF only · up to 2 GB each · processed on this computer</p></div>
+          </div>
+          <div class="card-body">
+            <input id="file-input" type="file" accept="application/pdf,.pdf" multiple>
+            <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-controls="file-input">
+              <span class="drop-icon" aria-hidden="true"></span>
+              <strong>Drop PDFs here or choose files</strong>
+              <span>Several PDFs are placed in the order you add them.</span>
+            </div>
+            <div class="documents" id="documents" aria-live="polite"></div>
+            <div class="error-box" id="upload-error" role="alert"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <span class="step">2</span>
+            <div><h2>Describe the plate</h2><p class="sub">The defaults favor a trustworthy first build.</p></div>
+          </div>
+          <div class="card-body">
+            <div class="field-grid">
+              <div class="wide">
+                <label for="plate-name">Plate name</label>
+                <input id="plate-name" value="STELE-0001" maxlength="64">
+                <div class="field-help">Etched into the title band large enough to read without a microscope.</div>
+              </div>
+              <div>
+                <label for="preset">Plate preset</label>
+                <select id="preset"><option>6-inch plate · standard microscope</option></select>
+              </div>
+              <div>
+                <label for="content-kind">Document type</label>
+                <select id="content-kind">
+                  <option value="digital">Clean digital PDF</option>
+                  <option value="scan">Black-and-white scan</option>
+                  <option value="photos">Scans with photos or shading</option>
+                </select>
+              </div>
+              <div>
+                <label for="dpi">Capture detail</label>
+                <select id="dpi">
+                  <option value="600">600 DPI · faster trial</option>
+                  <option value="900" selected>900 DPI · recommended</option>
+                  <option value="1200">1200 DPI · slower, more memory</option>
+                </select>
+              </div>
+              <div>
+                <label for="min-feature">Writer minimum line</label>
+                <select id="min-feature">
+                  <option value="0.5">0.5 µm · fine writer</option>
+                  <option value="1" selected>1.0 µm · generic default</option>
+                  <option value="2">2.0 µm · coarse writer</option>
+                </select>
+              </div>
+              <div class="wide check">
+                <input id="nav-band" type="checkbox" checked>
+                <label for="nav-band">Add a navigation band with a page map and scale bar.</label>
+              </div>
+            </div>
+            <div class="notice warning"><strong>Engineering assumptions.</strong> The generic writer limits and microscope optics are not vendor facts. They are recorded in every report so they cannot be mistaken for confirmed requirements.</div>
+          </div>
+        </section>
+
+        <section class="card progress-wrap" id="progress-card" aria-live="polite">
+          <div class="card-head">
+            <span class="step">3</span>
+            <div><h2 id="progress-title">Building your trial</h2><p class="sub" id="progress-detail">Preparing the compiler</p></div>
+          </div>
+          <div class="card-body">
+            <div class="progress-track" role="progressbar" aria-label="Build progress"><div class="progress-bar" id="progress-bar"></div></div>
+            <div class="progress-label"><span id="progress-stage">Preparing</span><span id="progress-count"></span></div>
+            <button class="danger" id="cancel-button" type="button" hidden>Cancel build</button>
+            <div class="error-box" id="run-error" role="alert"></div>
+          </div>
+        </section>
+
+        <section class="card result-card" id="result-card">
+          <div class="card-head">
+            <span class="step">4</span>
+            <div><h2>Your result</h2><p class="sub">The wording below comes from the report’s authoritative verification status.</p></div>
+          </div>
+          <div class="card-body" id="result-body"></div>
+        </section>
+      </div>
+
+      <aside class="card summary">
+        <div class="card-head"><div><h2>What you’ll get</h2><p class="sub" id="plan-status">Choose a PDF to calculate the plate.</p></div></div>
+        <div class="card-body">
+          <div class="plate-sketch" aria-hidden="true"><div class="plate-inner"></div></div>
+          <div class="metrics">
+            <div class="metric"><span>Documents</span><strong id="metric-pages">—</strong></div>
+            <div class="metric"><span>Plates</span><strong id="metric-plates">—</strong></div>
+            <div class="metric"><span>Reduction</span><strong id="metric-reduction">—</strong></div>
+            <div class="metric"><span>Page on glass</span><strong id="metric-size">—</strong></div>
+          </div>
+          <div class="notice" id="estimate">Verification can take several minutes and several GB of memory even for one page. Complete the required trial before starting the full corpus.</div>
+          <div class="error-box" id="calc-error" role="alert"></div>
+          <div class="actions">
+            <button class="secondary" id="trial-button" type="button" disabled>Build a one-page trial</button>
+            <button class="primary" id="build-button" type="button" disabled>Complete a trial to unlock full build</button>
+          </div>
+          <div class="privacy">No cloud, telemetry, account, CDN, or external fonts.</div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <dialog id="doctor-dialog">
+    <div class="dialog-head"><h2>Installation diagnostics</h2><button class="quiet-button" id="doctor-close" type="button">Close</button></div>
+    <div class="dialog-body" id="doctor-body"><p>Checking this installation…</p></div>
+  </dialog>
+
+  <script>
+    "use strict";
+    const params = new URLSearchParams(location.search);
+    const token = params.get("token") || "";
+    const state = {
+      documents: [], plan: null, runId: null, polling: null,
+      trialComplete: false, trialSeconds: null
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[c]);
+    const formatBytes = (bytes) => bytes > 1e9 ? `${(bytes / 1e9).toFixed(2)} GB` :
+      bytes > 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.ceil(bytes / 1e3)} KB`;
+
+    async function api(path, options = {}) {
+      const headers = new Headers(options.headers || {});
+      headers.set("X-Stele-Token", token);
+      if (options.json !== undefined) {
+        headers.set("Content-Type", "application/json");
+        options.body = JSON.stringify(options.json);
+      }
+      const response = await fetch(path, { ...options, headers });
+      const payload = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+      if (!response.ok) throw new Error(payload.error || `Request failed (${response.status})`);
+      return payload;
+    }
+
+    function settings() {
+      return {
+        dpi: Number($("dpi").value),
+        content_kind: $("content-kind").value,
+        min_feature_um: Number($("min-feature").value),
+        nav_band: $("nav-band").checked
+      };
+    }
+    function selections() {
+      return state.documents.map((doc) => ({
+        id: doc.id,
+        pages: $(`all-pages-${doc.id}`)?.checked
+          ? "all"
+          : ($(`pages-${doc.id}`)?.value.trim() || "")
+      }));
+    }
+    function showError(id, message = "") {
+      const box = $(id);
+      box.textContent = message;
+      box.classList.toggle("visible", Boolean(message));
+    }
+    function syncBuildButton() {
+      $("build-button").disabled = !state.trialComplete;
+      $("build-button").textContent = state.trialComplete
+        ? "Build & verify all pages"
+        : "Complete a trial to unlock full build";
+    }
+    function setCancelButtonVisible(visible) {
+      const button = $("cancel-button");
+      button.hidden = !visible;
+      button.disabled = !visible;
+    }
+
+    function renderDocuments() {
+      $("documents").innerHTML = state.documents.map((doc) => `
+        <div class="document">
+          <div>
+            <div class="document-name" title="${escapeHtml(doc.name)}">${escapeHtml(doc.name)}</div>
+            <div class="document-meta">${doc.page_count} page${doc.page_count === 1 ? "" : "s"} · ${formatBytes(doc.size_bytes)}${doc.contains_images ? " · contains images" : ""}</div>
+          </div>
+          <div class="page-controls">
+            <label class="all-pages" for="all-pages-${doc.id}">
+              <input id="all-pages-${doc.id}" type="checkbox" checked>
+              All ${doc.page_count} pages
+            </label>
+            <label for="pages-${doc.id}">Or choose pages</label>
+            <input id="pages-${doc.id}" value="" placeholder="1-5, 8, 12-14" disabled aria-describedby="pages-help-${doc.id}" aria-label="Specific pages from ${escapeHtml(doc.name)}">
+            <div class="field-help" id="pages-help-${doc.id}">Use single page numbers or inclusive ranges, separated with commas.</div>
+          </div>
+        </div>`).join("");
+      state.documents.forEach((doc) => {
+        const allPages = $(`all-pages-${doc.id}`);
+        const pageRanges = $(`pages-${doc.id}`);
+        allPages.addEventListener("change", () => {
+          pageRanges.disabled = allPages.checked;
+          if (!allPages.checked && !pageRanges.value) pageRanges.value = "1";
+          if (!allPages.checked) pageRanges.focus();
+          calculate();
+        });
+        pageRanges.addEventListener("change", calculate);
+      });
+    }
+
+    async function uploadFiles(files) {
+      showError("upload-error");
+      state.trialComplete = false;
+      for (const file of files) {
+        if (file.type && file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+          showError("upload-error", `${file.name} is not a PDF.`);
+          continue;
+        }
+        $("dropzone").querySelector("strong").textContent = `Reading ${file.name}…`;
+        try {
+          const document = await api("/api/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/pdf", "X-Filename": encodeURIComponent(file.name) },
+            body: file
+          });
+          state.documents.push(document);
+          renderDocuments();
+        } catch (error) {
+          showError("upload-error", error.message);
+        }
+      }
+      $("dropzone").querySelector("strong").textContent = "Drop PDFs here or choose files";
+      await calculate();
+    }
+
+    let calcTimer;
+    function queueCalculate() {
+      state.trialComplete = false;
+      clearTimeout(calcTimer);
+      calcTimer = setTimeout(calculate, 180);
+    }
+    async function calculate() {
+      showError("calc-error");
+      if (!state.documents.length) {
+        state.plan = null;
+        $("metric-pages").textContent = "—";
+        $("metric-plates").textContent = "—";
+        $("metric-reduction").textContent = "—";
+        $("metric-size").textContent = "—";
+        $("trial-button").disabled = true;
+        $("build-button").disabled = true;
+        return;
+      }
+      $("plan-status").textContent = "Calculating capacity…";
+      try {
+        const plan = await api("/api/calc", {
+          method: "POST",
+          json: { documents: selections(), settings: settings() }
+        });
+        state.plan = plan;
+        $("metric-pages").textContent = `${plan.source_pages} page${plan.source_pages === 1 ? "" : "s"}`;
+        $("metric-plates").textContent = `${plan.plates} · ${(plan.utilization * 100).toFixed(0)}% of first used`;
+        $("metric-reduction").textContent = plan.reduction ? `${plan.reduction}:1` : "—";
+        $("metric-size").textContent = plan.pseudopage_mm ? `${plan.pseudopage_mm[0]} × ${plan.pseudopage_mm[1]} mm` : "—";
+        $("plan-status").textContent = `${plan.source_pages} pages become ${plan.placements} plate placements.`;
+        $("estimate").textContent = plan.estimate;
+        $("trial-button").disabled = false;
+        syncBuildButton();
+        if (plan.warnings.length) showError("calc-error", plan.warnings.join(" "));
+      } catch (error) {
+        state.plan = null;
+        $("plan-status").textContent = "Fix the page selection or settings.";
+        $("trial-button").disabled = true;
+        $("build-button").disabled = true;
+        showError("calc-error", error.message);
+      }
+    }
+
+    async function startRun(trial) {
+      if (!trial) {
+        const elapsed = state.trialSeconds ? ` The one-page trial took ${state.trialSeconds.toFixed(0)} seconds.` : "";
+        const pages = state.plan?.source_pages || 0;
+        if (!confirm(`Build and verify all ${pages} selected page${pages === 1 ? "" : "s"}?${elapsed} Time and memory may not scale linearly for a full corpus.`)) return;
+      }
+      showError("run-error");
+      $("trial-button").disabled = true;
+      $("build-button").disabled = true;
+      state.runId = null;
+      setCancelButtonVisible(false);
+      $("progress-card").classList.add("visible");
+      $("result-card").classList.remove("visible");
+      $("progress-title").textContent = trial ? "Building your one-page trial" : "Building and verifying your plate";
+      $("progress-detail").textContent = "Creating a reproducible run folder";
+      $("progress-card").scrollIntoView({ behavior: "smooth", block: "center" });
+      try {
+        const run = await api("/api/run", {
+          method: "POST",
+          json: {
+            documents: selections(),
+            plate_name: $("plate-name").value,
+            settings: settings(),
+            trial
+          }
+        });
+        state.runId = run.id;
+        setCancelButtonVisible(true);
+        pollRun();
+      } catch (error) {
+        setCancelButtonVisible(false);
+        showError("run-error", error.message);
+        $("trial-button").disabled = false;
+        syncBuildButton();
+      }
+    }
+
+    const stageProgress = {
+      preparing: [3, 9], building: [9, 54], writing: [54, 61],
+      verifying: [61, 90], previewing: [90, 97], finishing: [97, 100], complete: [100, 100]
+    };
+    function updateProgress(run) {
+      const range = stageProgress[run.stage] || [3, 97];
+      const fraction = Math.max(0, Math.min(1, run.done / Math.max(1, run.total)));
+      const percent = range[0] + (range[1] - range[0]) * fraction;
+      $("progress-bar").style.width = `${percent}%`;
+      $("progress-stage").textContent = run.stage.replace(/^\w/, (c) => c.toUpperCase());
+      $("progress-count").textContent = run.total > 1 ? `${run.done} / ${run.total}` : "";
+      $("progress-detail").textContent = run.detail;
+    }
+    async function pollRun() {
+      if (!state.runId) return;
+      try {
+        const run = await api(`/api/run/${encodeURIComponent(state.runId)}`);
+        updateProgress(run);
+        if (run.status === "complete") {
+          clearTimeout(state.polling);
+          $("trial-button").disabled = false;
+          if (run.trial) {
+            state.trialComplete = true;
+            state.trialSeconds = Number(run.result?.timings_s?.total || 0) || null;
+          }
+          syncBuildButton();
+          setCancelButtonVisible(false);
+          renderResult(run);
+          return;
+        }
+        if (run.status === "error" || run.status === "cancelled") {
+          clearTimeout(state.polling);
+          $("trial-button").disabled = false;
+          syncBuildButton();
+          setCancelButtonVisible(false);
+          showError("run-error", run.error || run.detail);
+          return;
+        }
+        state.polling = setTimeout(pollRun, 700);
+      } catch (error) {
+        showError("run-error", error.message);
+        state.polling = setTimeout(pollRun, 1600);
+      }
+    }
+
+    function artifactUrl(runId, artifactId, download = false) {
+      return `/api/artifact/${encodeURIComponent(runId)}/${encodeURIComponent(artifactId)}?token=${encodeURIComponent(token)}${download ? "&download=1" : ""}`;
+    }
+    function renderResult(run) {
+      const result = run.result;
+      const preview = run.artifacts.find((a) => a.kind === "preview");
+      const findings = result.findings.map((item) => `
+        <div class="finding">
+          <strong>${item.level === "ok" ? "✓ " : item.level === "error" ? "Stop · " : "Review · "}${escapeHtml(item.text)}</strong>
+          <small>${escapeHtml(item.action)}</small>
+        </div>`).join("");
+      const downloads = run.artifacts.map((item) => `
+        <a class="download" href="${artifactUrl(run.id, item.id, true)}">${escapeHtml(item.label)}</a>`).join("");
+      const unenforced = result.unenforced.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+      $("result-body").innerHTML = `
+        <div class="verdict ${escapeHtml(result.status)}">
+          <div class="verdict-state">${escapeHtml(result.status.replaceAll("_", " "))}</div>
+          <h3>${escapeHtml(result.headline)}</h3>
+          <p>${escapeHtml(result.meaning)}</p>
+        </div>
+        <div class="findings">${findings}</div>
+        <div class="notice warning"><strong>Prototype candidate handoff.</strong> ${escapeHtml(result.candidate_handoff)}</div>
+        ${preview ? `<img class="preview" src="${artifactUrl(run.id, preview.id)}" alt="Full plate preview">` : ""}
+        <div class="downloads">${downloads}</div>
+        <details open>
+          <summary>Why the “not checked” list is here</summary>
+          <p>This list is intentional. Some manufacturing requirements cannot be enforced without a real mask-shop rule deck. Showing those gaps prevents a software pass from being mistaken for fabrication approval; the shop must confirm each applicable item.</p>
+          <ul>${unenforced}</ul>
+        </details>
+        <details>
+          <summary>Reproduce this from the command line</summary>
+          <p><code>${escapeHtml(run.cli_command)}</code></p>
+        </details>`;
+      $("result-card").classList.add("visible");
+      $("result-card").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    async function showDoctor() {
+      const dialog = $("doctor-dialog");
+      dialog.showModal();
+      $("doctor-body").innerHTML = "<p>Checking this installation…</p>";
+      try {
+        const result = await api("/api/doctor");
+        const checks = result.checks.map((check) => `
+          <div class="doctor-check">
+            <b class="${check.ok ? "ok" : "bad"}">${check.ok ? "PASS" : "FAIL"}</b>
+            <strong>${escapeHtml(check.name)}</strong>
+            <span>${escapeHtml(check.detail)}${check.fix ? `<br><b>Fix:</b> ${escapeHtml(check.fix)}` : ""}</span>
+          </div>`).join("");
+        $("doctor-body").innerHTML = `
+          <p><strong>${result.ok ? "This installation is ready." : "This installation needs attention."}</strong><br>
+          <span class="muted">Stele ${escapeHtml(result.stele_version)} prototype · ${escapeHtml(result.platform)}</span></p>
+          ${checks}`;
+      } catch (error) {
+        $("doctor-body").textContent = error.message;
+      }
+    }
+
+    $("dropzone").addEventListener("click", () => $("file-input").click());
+    $("dropzone").addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); $("file-input").click(); }
+    });
+    $("file-input").addEventListener("change", (event) => uploadFiles([...event.target.files]));
+    for (const eventName of ["dragenter", "dragover"]) {
+      $("dropzone").addEventListener(eventName, (event) => {
+        event.preventDefault(); $("dropzone").classList.add("dragging");
+      });
+    }
+    for (const eventName of ["dragleave", "drop"]) {
+      $("dropzone").addEventListener(eventName, (event) => {
+        event.preventDefault(); $("dropzone").classList.remove("dragging");
+      });
+    }
+    $("dropzone").addEventListener("drop", (event) => uploadFiles([...event.dataTransfer.files]));
+    ["content-kind", "dpi", "min-feature", "nav-band"].forEach((id) => $(id).addEventListener("change", queueCalculate));
+    $("trial-button").addEventListener("click", () => startRun(true));
+    $("build-button").addEventListener("click", () => startRun(false));
+    $("cancel-button").addEventListener("click", async () => {
+      if (!state.runId) return;
+      $("cancel-button").disabled = true;
+      try { await api(`/api/run/${encodeURIComponent(state.runId)}/cancel`, { method: "POST", json: {} }); }
+      catch (error) { showError("run-error", error.message); }
+    });
+    $("doctor-button").addEventListener("click", showDoctor);
+    $("doctor-close").addEventListener("click", () => $("doctor-dialog").close());
+    if (!token) {
+      showError("upload-error", "This page is missing its private session token. Close it and launch Stele again.");
+    }
+  </script>
+</body>
+</html>

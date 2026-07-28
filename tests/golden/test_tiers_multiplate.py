@@ -12,8 +12,8 @@ from stele.build import build_job
 from stele.cli import main as cli_main
 from tests.conftest import write_job
 
-# whole-plate builds: ~8 min and 11.2 GB peak RSS for this tier locally --
-# exceeds GitHub-hosted runners (~7 GB), so golden tests are nightly-tier
+# Native geometry and verification make these integration tests a nightly tier;
+# explicit RSS regression budgets live in test_build_golden.py.
 pytestmark = pytest.mark.slow
 
 

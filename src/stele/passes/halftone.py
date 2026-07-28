@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from importlib.resources import files
 
 import cv2
 import numpy as np
@@ -31,13 +32,25 @@ from stele.passes.dither import (
     tile_pattern,
 )
 
-_ASSET = os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets", "bluenoise", "vnc64.npy")
+
+def _asset_bytes() -> bytes:
+    """Find the blue-noise table in an installed wheel or a source checkout."""
+    packaged = files("stele").joinpath("assets", "bluenoise", "vnc64.npy")
+    if packaged.is_file():
+        return packaged.read_bytes()
+    fallback = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "assets", "bluenoise", "vnc64.npy"
+    )
+    with open(fallback, "rb") as source:
+        return source.read()
 
 
 def load_mask(name: str) -> np.ndarray:
     if name == "clustered":
         return thresholds_from_ranks(clustered_mask(8))
-    return thresholds_from_ranks(np.load(_ASSET))
+    import io
+
+    return thresholds_from_ranks(np.load(io.BytesIO(_asset_bytes())))
 
 
 def mask_asset_sha256(name: str) -> str:
@@ -45,7 +58,7 @@ def mask_asset_sha256(name: str) -> str:
         return "generated:clustered8"
     import hashlib
 
-    return hashlib.sha256(open(_ASSET, "rb").read()).hexdigest()
+    return hashlib.sha256(_asset_bytes()).hexdigest()
 
 
 @dataclass

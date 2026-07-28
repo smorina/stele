@@ -36,9 +36,12 @@ def check_chirality(
     px_per_um: float = 1.0,
 ) -> dict:
     rect = plan.reserved["orientation_glyph"].as_tuple()
-    # render the glyph region from CONTENT (where furniture lives), then apply
-    # the top transform read from the GDS
-    bm = rasterize_cell_hierarchical(layout, "CONTENT", rect, px_per_um, layer, datatype)
+    # Render FURNITURE directly. Asking the hierarchical renderer for this tiny
+    # viewport through CONTENT makes it cache FURNITURE at its full, plate-wide
+    # bbox (the corner marks span ~146 mm), creating a multi-gigapixel bitmap
+    # just to inspect this glyph. FURNITURE is referenced from CONTENT at the
+    # identity transform, so the direct render is geometrically equivalent.
+    bm = rasterize_cell_hierarchical(layout, "FURNITURE", rect, px_per_um, layer, datatype)
     gds_mirrored = top_transform_mirrored(layout)
     actual = bm[:, ::-1] if gds_mirrored else bm  # as seen on the manufactured plate
 

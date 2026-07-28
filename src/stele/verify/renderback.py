@@ -60,8 +60,11 @@ def rasterize_cell_hierarchical(
     _cache: dict | None = None,
 ) -> np.ndarray:
     """Binary render of a cell exploiting hierarchy: each unique child cell is
-    rendered ONCE and blitted at its instance offsets (translation-only
-    instances; anything else falls back to flattening that instance).
+    rendered and blitted at its instance offsets (translation-only instances;
+    anything else falls back to flattening that instance). Only shared
+    halftone tile cells are retained across calls. Page-specific patch cells
+    and page cells can be tens of MB per resolution, so caching them makes
+    verification memory grow with page count.
 
     Flattening a dithered page means a Python loop over ~10^6 polygons
     (minutes, measured); hierarchical rendering visits ~10^3 unique tile
@@ -107,15 +110,16 @@ def rasterize_cell_hierarchical(
             continue
         b = child.dbbox()
         key = (child.cell_index(), round(px_per_um, 6))
-        if key not in cache:
+        cacheable = child.name.startswith("HT_")
+        if cacheable and key in cache:
+            child_bm, cb = cache[key]
+        else:
             cb = (b.left, b.bottom, b.right, b.top)
-            cache[key] = (
-                rasterize_cell_hierarchical(
-                    layout, child.name, cb, px_per_um, layer, datatype, supersample, cache
-                ),
-                cb,
+            child_bm = rasterize_cell_hierarchical(
+                layout, child.name, cb, px_per_um, layer, datatype, supersample, cache
             )
-        child_bm, cb = cache[key]
+            if cacheable:
+                cache[key] = (child_bm, cb)
         ox = (t.disp.x + cb[0] - xmin) * px_per_um
         oy_top = (ymax - (t.disp.y + cb[3])) * px_per_um
         c0, r0 = int(round(ox)), int(round(oy_top))

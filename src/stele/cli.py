@@ -44,7 +44,29 @@ def main(argv: list[str] | None = None) -> int:
     p_calc = sub.add_parser("calc", help="capacity/resolution math for a job manifest")
     p_calc.add_argument("manifest")
 
+    p_ui = sub.add_parser("ui", help="open the local browser interface")
+    p_ui.add_argument("--port", type=int, default=0, help="localhost port (default: automatic)")
+    p_ui.add_argument("--no-browser", action="store_true", help="print the URL without opening it")
+    p_ui.add_argument("--home", default=None, help="run storage folder (default: ~/.stele)")
+
+    p_doctor = sub.add_parser("doctor", help="check this installation and its GDS engines")
+    p_doctor.add_argument("--json", action="store_true", help="print machine-readable JSON")
+    p_doctor.add_argument("--home", default=None, help="run storage folder (default: ~/.stele)")
+
     args = parser.parse_args(argv)
+
+    if args.cmd == "ui":
+        from stele.ui import serve
+
+        return serve(home=args.home, port=args.port, open_browser=not args.no_browser)
+
+    if args.cmd == "doctor":
+        from stele.doctor import format_doctor, run_doctor, write_doctor_json
+
+        result = run_doctor(args.home)
+        write_doctor_json(result, args.home)
+        print(json.dumps(result, indent=2) if args.json else format_doctor(result))
+        return 0 if result["ok"] else 1
 
     if args.cmd == "validate":
         from stele.config.manifest import load_manifest

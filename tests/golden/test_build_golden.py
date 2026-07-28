@@ -11,8 +11,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from stele.build import build_job
 from tests.conftest import write_job
 
-# whole-plate builds: ~8 min and 11.2 GB peak RSS for this tier locally --
-# exceeds GitHub-hosted runners (~7 GB), so golden tests are nightly-tier
+# Whole-plate builds remain a nightly tier. Resource cliffs have explicit
+# subprocess budgets below so a process-wide high-water mark cannot hide them.
 pytestmark = pytest.mark.slow
 
 
@@ -115,4 +115,38 @@ def test_stress_plate_budgets(tmp_path, profiles_dir):
     assert m["placed"] == 120
     assert m["elapsed"] < 240, f"120-page build took {m['elapsed']:.0f}s (budget 240s)"
     assert m["size_mb"] < 400, m["size_mb"]
-    assert m["peak_gb"] < 4.0, f"peak RSS {m['peak_gb']:.2f} GB (budget 4 GB)"
+    assert m["peak_gb"] < 1.5, f"peak RSS {m['peak_gb']:.2f} GB (budget 1.5 GB)"
+
+
+@pytest.mark.slow
+def test_verified_page_memory_budget(tmp_path, profiles_dir):
+    """The independent verifier must not recreate the former plate-wide
+    chirality bitmap or full-page int16 threshold maps. This dense-page probe
+    peaked at 7.6-7.9 GB before those lifetime fixes."""
+    import json
+    import subprocess
+
+    import synthetic
+
+    pdf = synthetic.stress_corpus(str(tmp_path / "verified.pdf"), 1)
+    job = write_job(tmp_path, profiles_dir, pdf)
+    script = (
+        "import json, resource, sys, time\n"
+        "from stele.build import build_job\n"
+        "t0 = time.time()\n"
+        f"report = build_job({str(job)!r}, verify=True, preview=False)\n"
+        "peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n"
+        "peak_gb = peak / 1e9 if sys.platform == 'darwin' else peak / 1e6\n"
+        "print(json.dumps({'elapsed': time.time() - t0, 'peak_gb': peak_gb,\n"
+        "                  'status': report['plate_set']['status']}))\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, timeout=120
+    )
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    measured = json.loads(proc.stdout.strip().splitlines()[-1])
+    assert measured["status"] in ("pass", "pass_with_warnings")
+    assert measured["elapsed"] < 60, measured
+    assert measured["peak_gb"] < 4.0, (
+        f"verified-page peak RSS {measured['peak_gb']:.2f} GB (budget 4 GB)"
+    )

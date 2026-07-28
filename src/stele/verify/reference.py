@@ -8,6 +8,40 @@ import numpy as np
 import pypdfium2 as pdfium
 
 
+def _threshold_mask(
+    gray: np.ndarray,
+    threshold: int,
+    rect_slices: list[tuple[int, int, int, int]],
+    rect_threshold: int,
+) -> np.ndarray:
+    """Threshold one high-resolution band without a full-size threshold map."""
+    mask = gray < threshold
+    if rect_threshold != threshold:
+        for r0, r1, c0, c1 in rect_slices:
+            mask[r0:r1, c0:c1] = gray[r0:r1, c0:c1] < rect_threshold
+    return mask
+
+
+def _to_comparison_grid(
+    mask: np.ndarray,
+    width_px: int,
+    height_px: int,
+    coverage: float,
+    upsampling: bool,
+) -> np.ndarray:
+    """Resize a build-resolution binary mask with its original coverage rule."""
+    import cv2
+
+    if upsampling:
+        return cv2.resize(
+            mask.astype(np.uint8), (width_px, height_px), interpolation=cv2.INTER_NEAREST
+        ) > 0
+    resized = cv2.resize(
+        mask.astype(np.float32), (width_px, height_px), interpolation=cv2.INTER_AREA
+    )
+    return resized >= coverage
+
+
 def render_reference_gray(pdf_path: str, page_index: int, width_px: int) -> np.ndarray:
     """Render one page to grayscale uint8 at an exact pixel width (y-down)."""
     pdf = pdfium.PdfDocument(pdf_path)
@@ -87,13 +121,11 @@ def reference_masks(
     gray = render_reference_gray(pdf_path, page_index, hi_width_px)
     h_px = int(round(gray.shape[0] * width_px / gray.shape[1]))
 
-    h_map = np.full(gray.shape, hysteresis, dtype=np.int16)
     scale = hi_width_px / w_pt
     rect_slices = []
     for x0, y0, x1, y1 in image_rects_pt or []:
         r0, r1 = max(0, int(y0 * scale)), min(gray.shape[0], int(np.ceil(y1 * scale)))
         c0, c1 = max(0, int(x0 * scale)), min(gray.shape[1], int(np.ceil(x1 * scale)))
-        h_map[r0:r1, c0:c1] = image_hysteresis
         rect_slices.append((r0, r1, c0, c1))
 
     thr = int(fixed_threshold)
@@ -108,20 +140,34 @@ def reference_masks(
             t, _ = cv2.threshold(t_src, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
             thr = int(round(t))
 
-    g = gray.astype(np.int16)
     upsampling = width_px > hi_width_px
 
-    def to_grid(mask: np.ndarray, coverage: float) -> np.ndarray:
-        if upsampling:
-            return cv2.resize(
-                mask.astype(np.uint8), (width_px, h_px), interpolation=cv2.INTER_NEAREST
-            ) > 0
-        m = cv2.resize(mask.astype(np.float32), (width_px, h_px), interpolation=cv2.INTER_AREA)
-        return m >= coverage
-
-    strict = to_grid(g < thr - h_map, 0.55)
-    mid = to_grid(g < thr, 0.5)
-    loose = to_grid(g < thr + h_map, 0.35)
+    # Build and downsample one band at a time. The former int16 gray copy plus
+    # full-page int16 hysteresis map together cost ~303 MB on a 900-DPI Letter
+    # render, and all three masks overlapped in memory. Only embedded-image
+    # rectangles need a different band, so patch those slices in each boolean
+    # mask instead.
+    strict = _to_comparison_grid(
+        _threshold_mask(gray, thr - hysteresis, rect_slices, thr - image_hysteresis),
+        width_px,
+        h_px,
+        0.55,
+        upsampling,
+    )
+    mid = _to_comparison_grid(
+        _threshold_mask(gray, thr, rect_slices, thr),
+        width_px,
+        h_px,
+        0.5,
+        upsampling,
+    )
+    loose = _to_comparison_grid(
+        _threshold_mask(gray, thr + hysteresis, rect_slices, thr + image_hysteresis),
+        width_px,
+        h_px,
+        0.35,
+        upsampling,
+    )
     return strict, mid, loose, {"mode": threshold_mode, "threshold": thr}
 
 

@@ -1,0 +1,43 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Verify the tag matches both package versions
+        shell: bash
+        run: |
+          package_version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml | head -n 1)"
+          init_version="$(sed -n 's/^__version__ = "\([^"]*\)"/\1/p' src/stele/__init__.py | head -n 1)"
+          if [[ "$GITHUB_REF_NAME" != "v$package_version" || "$package_version" != "$init_version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME, pyproject version $package_version, and package version $init_version do not match."
+            exit 1
+          fi
+      - run: uv sync --frozen
+      - run: uv run ruff check src tests testdata
+      - run: uv run pytest tests -q -m "not slow"
+      - run: uv build
+      - name: Verify the wheel contains its UI and blue-noise data
+        run: |
+          unzip -l dist/*.whl | grep 'stele/ui/static/app.html'
+          unzip -l dist/*.whl | grep 'stele/assets/bluenoise/vnc64.npy'
+      - name: Build the double-click installer bundle
+        run: git archive --format=zip --prefix=Stele/ -o "Stele-${GITHUB_REF_NAME}.zip" HEAD
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            Stele-${{ github.ref_name }}.zip
+            dist/*.whl
