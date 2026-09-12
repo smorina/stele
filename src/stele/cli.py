@@ -97,12 +97,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "simulate":
-        import numpy as np
-        from PIL import Image
-
         from stele.config.manifest import load_manifest
-        from stele.verify.readability import simulate_view, stroke_contrast
-        from stele.verify.renderback import open_layout, rasterize_cell_hierarchical
+        from stele.verify.renderback import open_layout
+        from stele.verify.simulate import default_region, simulate_region
 
         manifest, profiles = load_manifest(args.manifest)
         candidates = _plate_gds_candidates(manifest.output.gds)
@@ -120,44 +117,29 @@ def main(argv: list[str] | None = None) -> int:
             print(f"ERROR: cell {args.cell!r} not found in {', '.join(candidates)}",
                   file=sys.stderr)
             return 1
-        b = cell.dbbox()
         if args.region:
-            x0, y0, w, h = (float(v) for v in args.region.split(","))
+            region = tuple(float(v) for v in args.region.split(","))
+            if len(region) != 4:
+                print("ERROR: --region takes x0,y0,w,h in page um", file=sys.stderr)
+                return 1
         else:
-            w, h = 400.0, 300.0
-            x0 = (b.left + b.right) / 2 - w / 2
-            y0 = (b.bottom + b.top) / 2 - h / 2
-        um_per_px = 0.1
-        ink = rasterize_cell_hierarchical(
-            layout, args.cell, (x0, y0, x0 + w, y0 + h), 1.0 / um_per_px,
-            profiles.fab.layer, profiles.fab.datatype,
+            region = default_region(layout, args.cell)
+        sim = simulate_region(
+            layout, args.cell, region, profiles.reader,
+            profiles.fab.layer, profiles.fab.datatype, polarity=profiles.layout.polarity,
         )
-        import cv2
-
-        from stele.verify.readability import airy_psf
-
-        transmission = 1.0 - (ink > 0).astype(np.float32)
-        psf = airy_psf(
-            profiles.reader.numerical_aperture, profiles.reader.wavelength_nm / 1000.0,
-            um_per_px,
-        ).astype(np.float32)
-        intensity = cv2.filter2D(transmission, -1, psf, borderType=cv2.BORDER_REPLICATE)
-        contrast = stroke_contrast(ink, intensity, um_per_px)
-        eye_view, eye_um = simulate_view(ink, um_per_px, profiles.reader)
         out = args.out or f"{path}.{args.cell}.sim.png"
-        Image.fromarray((np.clip(eye_view, 0, 1) * 255).astype(np.uint8)).resize(
-            (eye_view.shape[1] * 4, eye_view.shape[0] * 4), Image.NEAREST
-        ).save(out)
+        with open(out, "wb") as f:
+            f.write(sim["png"])
         print(f"simulated view ({profiles.reader.name}, x{profiles.reader.magnification:g}, "
-              f"eye-limited {eye_um:.2f} um/px on plate): {out}")
-        print(json.dumps(contrast, indent=1))
+              f"{profiles.layout.polarity}, eye-limited {sim['eye_um_per_px']:.2f} um/px on "
+              f"plate): {out}")
+        print(json.dumps(sim["contrast"], indent=1))
         crit = profiles.reader.contrast_criterion
-        legible = [bin_ for bin_ in contrast["bins"] if bin_["michelson"] >= crit]
-        print(f"legible stroke bins (Michelson >= {crit}): "
-              f"{[b['stroke_um'] for b in legible]}")
+        print(f"legible stroke bins (Michelson >= {crit}): {sim['legible_bins']}")
         # the sim is a gate, not just a demo: nothing legible -> nonzero exit
-        print(f"readability: {'PASS' if legible else 'FAIL'}")
-        return 0 if legible else 1
+        print(f"readability: {'PASS' if sim['pass'] else 'FAIL'}")
+        return 0 if sim["pass"] else 1
 
     if args.cmd == "verify":
         from stele.build import (

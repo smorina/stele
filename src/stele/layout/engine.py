@@ -91,11 +91,45 @@ class PlatePlan:
             "page_offset": self.page_offset,
             "tiers": sorted({pl.tier_scale for pl in self.placements}, reverse=True),
             "reading_order": "row-major, top row first, left-to-right",
+            "text_areas": {
+                band: area.as_tuple()
+                for band in ("title_band", "nav_band")
+                if (area := band_text_area(self, band)) is not None
+            },
         }
 
 
 class OverflowError_(ValueError):
     pass
+
+
+BAND_TEXT_MARGIN_UM = 300.0  # clearance between band text and corner furniture
+
+
+def band_text_area(plan: PlatePlan, band: str, margin_um: float = BAND_TEXT_MARGIN_UM) -> Rect | None:
+    """The part of a reserved band that is free of the other furniture.
+
+    The corner fiducials (and, at the bottom, the orientation glyph) sit
+    INSIDE the title and navigation bands, so text laid out over the whole
+    band collides with them (measured: the page map ran over the SW fiducial
+    and the chirality glyph). Build and calc both place text in this span.
+    Returns None when the band does not exist or nothing fits.
+    """
+    rect = plan.reserved.get(band)
+    if rect is None:
+        return None
+    x0, x1 = rect.x0, rect.x1
+    mid = (rect.x0 + rect.x1) / 2.0
+    for key, other in plan.reserved.items():
+        if key == band or not other.intersects(rect):
+            continue
+        if (other.x0 + other.x1) / 2.0 < mid:
+            x0 = max(x0, other.x1 + margin_um)
+        else:
+            x1 = min(x1, other.x0 - margin_um)
+    if x1 - x0 <= 0:
+        return None
+    return Rect(x0, rect.y0, x1, rect.y1)
 
 
 def _plate_frame(fab: FabProfile, layout: LayoutSpec) -> PlatePlan:

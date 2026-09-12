@@ -1,6 +1,6 @@
 [project]
 name = "stele"
-version = "0.2.1"
+version = "0.3.0"
 description = "PDF -> photomask (GDSII) archive compiler for long-horizon information preservation (US 11,993,421 B2 style pseudopage plates)"
 license = "AGPL-3.0-or-later"
 license-files = ["LICENSE"]

@@ -26,7 +26,11 @@ def test_mixed_page_gates_pass(tmp_path, profiles_dir, corpus_dir):
     g = report["verify"]["gates"]
     assert g["content_pass"], g
     assert g["status"] in ("pass", "pass_with_warnings"), g
-    assert report["plan"]["usable_slots"] == 3723
+    # shipped layout profile: no gutters (page + 4 um pitch) -> 73 x 57 grid,
+    # 4161 theoretical, 4012 usable after the title band, fiducials and glyph
+    # (the model defaults with 120/40 um gutters still give 3723; see
+    # tests/unit/test_layout_config.py)
+    assert report["plan"]["usable_slots"] == 4012
 
 
 def test_build_is_deterministic(tmp_path, profiles_dir, corpus_dir):

@@ -116,10 +116,18 @@ uv run stele verify jobs/patent_demo.yaml     # re-verify an existing GDS
 uv run stele simulate jobs/patent_demo.yaml   # through-the-microscope view of a page
 ```
 
-The first operability release intentionally exposes a small, safe settings
-surface. The CLI and [reference](docs/reference.md) remain the path for custom
-vendor profiles and all expert fields. [docs/usability.md](docs/usability.md)
-records the analysis, decisions, shipped scope, and follow-on plan.
+The UI exposes the decisions with visible consequences, grouped behind
+collapsible sections: plate size (6", 5", 150 mm, 125 mm, 4", custom) and
+unusable border; clear- or dark-field tone and mirroring; page size on glass,
+gutters (none by default) and the magnification ladder; title text, height,
+band and alignment; the guide band's description text, size and alignment;
+and the microscope's magnification, NA, wavelength and contrast criterion.
+A live plate sketch and optics estimates update as you type, every finished
+run keeps its settings for reuse, and a microscope panel re-renders any built
+page through other optics without rebuilding. The CLI and
+[reference](docs/reference.md) remain the path for custom vendor profiles and
+the remaining expert fields. [docs/usability.md](docs/usability.md) records
+the analysis, decisions, shipped scope, and follow-on plan.
 
 Beyond text: `image_mode: dither` renders continuous-tone images as
 DRC-clean blue-noise halftones; `color_mode: rgb_triad` emits the patent's

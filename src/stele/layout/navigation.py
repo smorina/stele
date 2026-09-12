@@ -12,7 +12,99 @@ from __future__ import annotations
 import numpy as np
 from shapely.geometry import Polygon
 
-from stele.layout.fiducials import stroke_text
+from stele.layout.fiducials import measure_text_width, stroke_text
+
+TEXT_LEADING = 1.5  # line pitch as a multiple of character height
+
+
+def block_height(n_lines: int, char_h: float, leading: float = TEXT_LEADING) -> float:
+    """Vertical extent of an n-line block: the first line's height plus the
+    leading of every further line."""
+    if n_lines <= 0:
+        return 0.0
+    return char_h * (1.0 + (n_lines - 1) * leading)
+
+
+def fit_char_height(
+    lines: list[str],
+    area: tuple[float, float, float, float],
+    max_char_h: float,
+    leading: float = TEXT_LEADING,
+    min_char_h: float = 1.0,
+) -> float:
+    """Largest character height <= max_char_h at which every line fits the
+    area's width and the whole block fits its height."""
+    x0, y0, x1, y1 = area
+    n = len(lines)
+    if n == 0:
+        return max_char_h
+    h = min(max_char_h, (y1 - y0) / (1.0 + (n - 1) * leading))
+    ref_h = 100.0
+    widest = max(measure_text_width(line, ref_h) for line in lines)
+    if widest > 0:
+        h = min(h, (x1 - x0) * ref_h / widest)
+    return max(min_char_h, h)
+
+
+def text_block_aligned(
+    lines: list[str],
+    area: tuple[float, float, float, float],
+    char_h: float,
+    align: str = "center",
+    leading: float = TEXT_LEADING,
+) -> tuple[list[Polygon], dict]:
+    """Multi-line stroke text laid out INSIDE `area`: each line aligned
+    horizontally, the block centered vertically. Lines are never allowed to
+    run outside the area (the caller sizes char_h with fit_char_height).
+    Returns (polygons, placement record)."""
+    x0, y0, x1, y1 = area
+    n = len(lines)
+    polys: list[Polygon] = []
+    if n == 0:
+        return polys, {"lines": [], "char_height_um": char_h}
+    bh = block_height(n, char_h, leading)
+    base = y0 + ((y1 - y0) - bh) / 2.0  # lower-left of the LAST line
+    y = base + (n - 1) * char_h * leading
+    placed: list[dict] = []
+    for line in lines:
+        width = measure_text_width(line, char_h)
+        if align == "left":
+            lx = x0
+        elif align == "right":
+            lx = x1 - width
+        else:
+            lx = x0 + ((x1 - x0) - width) / 2.0
+        p, _ = stroke_text(line, char_h, (lx, y))
+        polys.extend(p)
+        placed.append({"text": line, "origin_um": (round(lx, 3), round(y, 3)),
+                       "width_um": round(width, 3)})
+        y -= char_h * leading
+    record = {
+        "lines": placed,
+        "char_height_um": round(char_h, 3),
+        "align": align,
+        "block_um": (round(x0, 3), round(base, 3), round(x1, 3), round(base + bh, 3)),
+    }
+    return polys, record
+
+
+def labeled_scale_bar(
+    x0: float,
+    y0: float,
+    length_um: float = 1000.0,
+    tick_um: float = 100.0,
+    height_um: float = 60.0,
+    label_height_um: float = 300.0,
+    gap_um: float = 150.0,
+) -> tuple[list[np.ndarray], list[Polygon], float]:
+    """A scale bar with its length written beside it ("1 MM"), so a finder
+    under the microscope can calibrate without the report. Returns
+    (bar rings, label polygons, total width um)."""
+    rings = scale_bar(x0, y0, length_um, tick_um, height_um)
+    mm = length_um / 1000.0
+    label = f"{mm:g} MM" if mm >= 1 else f"{length_um:g} UM"
+    polys, w = stroke_text(label, label_height_um, (x0 + length_um + gap_um, y0))
+    return rings, polys, length_um + gap_um + w
 
 
 def scale_bar(

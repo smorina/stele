@@ -661,14 +661,14 @@ sentence of help, and its provenance marker (**P** = patent example,
 |---|---|---|---|
 | `pseudopage_width_um` / `height_um` | Size of one page on the plate | Micrometres. 1980 × 2560 µm ≈ 2 × 2.5 mm — the patent's example, ~109:1 reduction. | P |
 | `pitch_x_um` / `pitch_y_um` | Spacing between pages | Must be at least the page size; the difference is the gutter. | A |
-| `title_text` | Title on the plate | Large etched text. Blank uses the plate name. | |
+| `title_text` / `title_align` | Title on the plate | Large etched text, centered by default between the corner marks (shrunk to fit if too wide). Blank uses the plate name. | |
 | `title_height_um` | Title size | 2500 µm = 2.5 mm, readable with the naked eye. | P |
 | `title_band_um` | Title strip height | Reserved at the top; no pages placed there. | |
-| `nav_band_um` | Guide strip at the bottom | 0 = off. Adds a page map and scale bar so a finder can navigate the plate. | |
+| `nav_band_um` / `nav_text` / `nav_text_height_um` / `nav_align` | Guide strip at the bottom | 0 = off. Adds a page map, your description lines, and a labeled 1 mm scale bar, kept clear of the corner marks, so a finder can navigate the plate. | |
 | `fiducial_size_um` | Alignment crosses | Corner marks for measurement and alignment. | |
 | `orientation_glyph_um` | Orientation mark | An "F" — asymmetric, so a mirrored plate is detectable and machine-checked. | |
 | `mirrored` | Mirror the whole plate | For writing on the far side of the glass. Verified against the actual file, never assumed. | |
-| `polarity` | Chrome or clear | Only clear-field is implemented today. | |
+| `polarity` | Plate tone | **Clear field** — chrome text on clear glass · **Dark field** — clear text in a chrome field (writer exposes only the glyphs; bright-on-dark reading). Same geometry; a tone instruction to the shop. | |
 | `tier_scales` | Magnification ladder | e.g. `[4, 1]` places every page twice — once big enough to hint at with a loupe, once at full reduction. The patent's "lead the finder to magnify" idea. | P |
 
 ---
@@ -719,10 +719,31 @@ emission; the simple settings path; one-page trial and full builds;
 plain-language verdicts; previews and downloads; release CI and packaged-data
 checks.
 
-**Next, based on user evidence:** calibrated resource estimates, run history,
-native open-folder integration, microscope simulation, and the mask-shop
-handoff package. The all-fields editor stays deferred unless users demonstrate
-that YAML plus the CLI is inadequate for vendor-profile work.
+**Shipped in v0.3 (2026-09), from the first user's notes:** the Standard
+settings tier as collapsible sections — plate size presets (6", 5", 150 mm,
+125 mm, 4", custom) and unusable border; clear/dark-field tone (dark field is
+now implemented end to end: same geometry, flipped tone instruction, preview
+and simulation as viewed, identical readability gate) and mirroring; page size
+on glass, gutters (none by default: the pages' margins separate the text) and
+the magnification ladder; title text, height, band and alignment (centered by
+default, shrunk to fit between the corner marks instead of colliding with
+them); the guide band's description text, size and alignment (laid out clear
+of the SW/SE fiducials and the orientation glyph, which the page map used to
+run over); the microscope's four numbers with live Rayleigh / eye-sampling /
+point-size estimates. Plus: a live plate sketch from the planner, run history
+from disk — Open restores a run's documents (adopted from the copies kept in
+its folder), page choices, settings (recovered from the profile YAMLs for
+runs older than settings.json), plate name, recorded plan and result — the
+microscope panel (`/api/run/<id>/simulate`, Phase 6 in spirit), defect
+heatmaps inline, per-setting default hints with reset controls, plate names
+that follow the first PDF's file name, and verdict context for the two
+findings that most often look like errors on a plate that is fine —
+non-embedded fonts (engine substitution) and small-text rule violations.
+
+**Next, based on user evidence:** calibrated resource estimates, native
+open-folder integration, and the mask-shop handoff package. The all-fields
+editor stays deferred unless users demonstrate that YAML plus the CLI is
+inadequate for vendor-profile work.
 
 **Phase 0 — instrumentation (≈1 day).** `progress=None` + `Cancelled` through
 `build_job` / `_build_one_plate` / `verify_plate`. Test: a build with a

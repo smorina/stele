@@ -30,10 +30,49 @@ STATUS = {
 }
 
 
-def _plate_gates(report: dict[str, Any]) -> list[dict[str, Any]]:
-    plates = report.get("plates") or []
-    gates = [p.get("verify", {}).get("gates") for p in plates]
-    return [g for g in gates if isinstance(g, dict)]
+def _stroke_context(report: dict[str, Any], plate: dict[str, Any]) -> str:
+    """Why width/space violations usually appear on text plates: strokes below
+    the writer minimum, i.e. small type at the plate's reduction."""
+    pages = plate.get("verify", {}).get("pages") or {}
+    mins = [
+        p.get("stroke_widths_um", {}).get("min_um")
+        for p in pages.values()
+        if isinstance(p, dict) and isinstance(p.get("stroke_widths_um"), dict)
+    ]
+    mins = [m for m in mins if isinstance(m, (int, float))]
+    fab = report.get("config", {}).get("profiles", {}).get("fab", {})
+    floor = fab.get("min_feature_um")
+    placements = plate.get("placements") or []
+    scale = placements[0].get("scale") if placements else None
+    if not mins or floor is None or not scale:
+        return ""
+    reduction = 1.0 / float(scale)
+    pt = float(floor) * reduction / 25.0  # STROKE_UM_PER_PT heuristic (config.validate)
+    return (
+        f" The thinnest measured stroke is {min(mins):.2f} µm against the {float(floor):g} µm "
+        f"writer minimum; at {reduction:.0f}:1 that is typical of text below about {pt:.0f} pt."
+    )
+
+
+def _font_substitution_note(plate: dict[str, Any]) -> str:
+    """Comma-separated non-embedded font names on pages whose content check
+    failed, or '' when none of the failing pages has such fonts."""
+    pages = plate.get("verify", {}).get("pages") or {}
+    failing = {
+        cell
+        for cell, result in pages.items()
+        if isinstance(result, dict)
+        and (result.get("structural_defects") or result.get("component_failures")
+             or result.get("shape_mismatch"))
+    }
+    if not failing:
+        return ""
+    names: set[str] = set()
+    ingest = plate.get("ingest") or []
+    for placement, record in zip(plate.get("placements") or [], ingest):
+        if placement.get("cell") in failing:
+            names.update(record.get("fonts_not_embedded") or [])
+    return ", ".join(sorted(names))
 
 
 def summarize_report(report: dict[str, Any]) -> dict[str, Any]:
@@ -41,7 +80,10 @@ def summarize_report(report: dict[str, Any]) -> dict[str, Any]:
     wording = STATUS.get(status, STATUS["unverified"])
     findings: list[dict[str, str]] = []
 
-    for index, gates in enumerate(_plate_gates(report), start=1):
+    for index, plate in enumerate(report.get("plates") or [], start=1):
+        gates = plate.get("verify", {}).get("gates")
+        if not isinstance(gates, dict):
+            continue
         plate_finding_start = len(findings)
         where = f"Plate {index}: " if len(report.get("plates", [])) > 1 else ""
         mismatch = float(gates.get("worst_defect_mismatch", 0))
@@ -112,8 +154,14 @@ def summarize_report(report: dict[str, Any]) -> dict[str, Any]:
             findings.append(
                 {
                     "level": "warning",
-                    "text": f"{where}{width} width and {space} spacing rule violation(s) were found.",
-                    "action": "Confirm the manufacturing rules or choose a coarser content treatment.",
+                    "text": (
+                        f"{where}{width} width and {space} spacing rule violation(s) were found."
+                        + _stroke_context(report, plate)
+                    ),
+                    "action": (
+                        "These are warnings under the current writer profile. Use a finer "
+                        "writer, larger pages on glass, or confirm the rules with the shop."
+                    ),
                 }
             )
         tiers = gates.get("readability_failing_tiers") or []
@@ -161,6 +209,36 @@ def summarize_report(report: dict[str, Any]) -> dict[str, Any]:
                     "action": "Review the plate checks in the report and confirm the vendor limits.",
                 }
             )
+        substituted = _font_substitution_note(plate)
+        if substituted and (structural or component or gates.get("shape_mismatch")):
+            findings.append(
+                {
+                    "level": "warning",
+                    "text": (
+                        f"{where}the differing page(s) use fonts that are not embedded in the "
+                        f"PDF ({substituted}). The build engine and the independent reference "
+                        f"engine substitute different fonts for these, so the differences above "
+                        f"may be glyph-shape disagreements rather than lost content."
+                    ),
+                    "action": (
+                        "Compare the heatmap against the page. For a clean check, re-export "
+                        "the PDF with embedded fonts (PDF/A or 'print to PDF') and rebuild."
+                    ),
+                }
+            )
+        title = (plate.get("furniture") or {}).get("title") or {}
+        if title.get("shrunk_to_fit"):
+            findings.append(
+                {
+                    "level": "warning",
+                    "text": (
+                        f"{where}the title was etched at {title['height_um'] / 1000:.2f} mm "
+                        f"instead of {title['requested_height_um'] / 1000:.2f} mm so it fits "
+                        f"between the corner marks."
+                    ),
+                    "action": "Shorten the title or lower the title height if that matters.",
+                }
+            )
 
     for warning in report.get("validation", {}).get("warnings", []):
         findings.append(
@@ -188,6 +266,11 @@ def summarize_report(report: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
+    orientation = report.get("orientation", {})
+    fonts: set[str] = set()
+    for plate in report.get("plates") or []:
+        for record in plate.get("ingest") or []:
+            fonts.update(record.get("fonts_not_embedded") or [])
     return {
         "status": status,
         "headline": wording["headline"],
@@ -197,4 +280,9 @@ def summarize_report(report: dict[str, Any]) -> dict[str, Any]:
         "unenforced": report.get("validation", {}).get("unenforced_fields", []),
         "plates": report.get("plate_set", {}).get("plates", 0),
         "timings_s": report.get("timings_s", {}),
+        "polarity": orientation.get("polarity", "clear_field"),
+        "mirrored": bool(orientation.get("mirrored", False)),
+        "tone_truth_table": orientation.get("tone_truth_table", []),
+        "fonts_not_embedded": sorted(fonts),
+        "furniture": (report.get("plates") or [{}])[0].get("furniture") or {},
     }

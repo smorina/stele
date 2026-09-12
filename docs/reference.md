@@ -38,16 +38,23 @@ output:
 ## Profiles (ship with provenance comments: patent example vs assumption)
 
 **fab** — the vendor contract (unconfirmed = candidate handoff, `drc_gate: warn`):
-`plate_width_mm/plate_height_mm`, `edge_exclusion_mm`, `min_feature_um`,
-`min_space_um`, `process_bias_um`, `dbu_nm`, `layer/datatype`,
-`max_vertices_per_polygon` (4000 default: GDS records stay signed-16-bit
-safe), `max_file_size_mb`, `max_cells`, `density_min/max`,
-`drc_gate: warn|fail` (warn -> geometry failures surface as
-pass_with_warnings, never an unqualified pass).
+`plate_width_mm/plate_height_mm` (152.4 = 6"; 127 = 5"; 150 / 125 mm metric
+blanks are equally valid), `edge_exclusion_mm` (unusable border per side;
+the title band sits INSIDE it), `min_feature_um`, `min_space_um`,
+`process_bias_um`, `dbu_nm`, `layer/datatype`, `max_vertices_per_polygon`
+(4000 default: GDS records stay signed-16-bit safe), `max_file_size_mb`,
+`max_cells`, `density_min/max` — *pattern* density: the fraction of each
+64-px preview window covered by drawn polygons (chrome on a clear-field
+plate, clear apertures on a dark-field plate), not optical density; only
+ink-bearing windows are gated — `drc_gate: warn|fail` (warn -> geometry
+failures surface as pass_with_warnings, never an unqualified pass).
 
 **reader** — the bundled optics (the binding constraint on text size):
-`magnification`, `numerical_aperture`, `wavelength_nm`,
-`contrast_criterion` (Michelson gate for the readability sim).
+`magnification` (sets the eye-limited sampling, 73 µm / M on the plate),
+`numerical_aperture` (Rayleigh limit 0.61 λ / NA), `wavelength_nm`,
+`contrast_criterion` (Michelson gate for the readability sim). The UI's
+microscope panel re-renders a built plate through any reader without
+rebuilding — the geometry is fixed, only the optics move.
 
 **content** — ingest + tone policy:
 `dpi` (900), `threshold: fixed|otsu`, `fixed_threshold`,
@@ -73,16 +80,49 @@ right->B, G blanked); the triad machinery carries it once such inputs exist.
 
 **layout** — plate furniture and tiling:
 `pseudopage_width_um/height_um` (patent example 1980x2560),
-`pitch_x_um/pitch_y_um`, `title_text` (default plate name; plate sets get
-"k/n" appended), `title_height_um` (2.5 mm naked-eye tier),
-`title_band_um`, `nav_band_um` (0 = off; page map + scale bar),
-`fiducial_size_um`, `orientation_glyph_um`, `mirrored`,
-`polarity: clear_field`, `tier_scales: [1.0]` (e.g. [4.0, 1.0]: every page
-placed once per scale, largest first — the patent's magnification ladder).
+`pitch_x_um/pitch_y_um` (shipped profile: page size + 4 µm — no gutters, the
+pages' own margins separate the text; the 4 µm keeps each page's traced ink
+footprint inside its slot for the placement audit), `title_text` (default
+plate name; plate sets get "k/n" appended), `title_height_um` (2.5 mm
+naked-eye tier), `title_band_um` (reserved at the top of the active area),
+`title_align: left|center|right` (within the span between the NW/NE
+fiducials; a title too wide for it is shrunk to fit, never clipped — recorded
+in `furniture.title.shrunk_to_fit`), `nav_band_um` (0 = off; page map +
+description + labeled 1 mm scale bar, laid out in the span clear of the SW/SE
+fiducials and the orientation glyph), `nav_text` (extra description lines,
+newline-separated), `nav_text_height_um` (0 = auto-fit, max 600 µm),
+`nav_align`, `fiducial_size_um`, `orientation_glyph_um`, `mirrored`,
+`polarity: clear_field|dark_field`, `tier_scales: [1.0]` (e.g. [4.0, 1.0]:
+every page placed once per scale, largest first — the patent's magnification
+ladder).
+
+**Polarity** is a data-tone instruction to the mask shop, not a geometry
+change: the same polygons are drawn wherever the source has ink, so content
+verification is identical for both tones. `clear_field`: polygon = chrome
+retained, dark text on bright glass, the writer exposes the field.
+`dark_field`: polygon = chrome removed (a clear aperture), bright text in a
+chrome field, the writer exposes only the glyph areas — usually faster to
+write, and bright-on-dark text can be easier on the eyes. The preview and
+`stele simulate` show the plate as viewed for the chosen tone. The
+readability gate measures the same stroke modulation depth for both (the
+dark-field diffraction image is the exact complement of the clear-field one);
+no perceptual credit is given for bright-on-dark reading, so switching tone
+never makes a plate pass that would otherwise fail. The report's
+`orientation.fab_tone_assumption` states the tone instruction the shop must
+confirm.
 
 ## Report (per plate; single-plate keys aliased at top level)
 
-- `plan`: reserved rects, theoretical vs usable slots, plate k of n, tiers.
+- `plan`: reserved rects, theoretical vs usable slots, plate k of n, tiers,
+  `text_areas` (the band spans free of corner furniture).
+- `furniture`: where the title and guide-band text actually landed (height,
+  width, origin, `shrunk_to_fit`), the scale bar, and the polarity.
+- `ingest[].fonts_not_embedded`: fonts the page references without embedding.
+  The build (PyMuPDF) and reference (pypdfium2) engines substitute different
+  fonts for these, so glyph-shape disagreements on such pages are a known
+  cause of structural defects that are not lost content; the UI verdict says
+  so next to the error and points at the heatmap. Embedding fonts before
+  building gives a clean check.
 - `placements`: cell, page_key, slot, origin, scale, tier_scale.
 - `ingest`: per page — boxes, rotation, sha256.
 - `halftone`: pitch, mask + asset hash, tile cells, per-page sites/patches,

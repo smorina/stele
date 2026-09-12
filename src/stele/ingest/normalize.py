@@ -30,6 +30,11 @@ class PageJob:
     cropbox_pt: tuple[float, float, float, float]
     rotation_deg: int
     frame_pt: tuple[float, float]  # normalized (rotated) page frame w, h in points
+    # fonts the page uses but does not embed: the build and reference engines
+    # substitute DIFFERENT fonts for these, so glyph-shape disagreements on
+    # such pages are a known cause of verification defects (recorded so the
+    # verdict can say so)
+    fonts_not_embedded: tuple[str, ...] = ()
 
     def record(self) -> dict:
         return {
@@ -41,7 +46,26 @@ class PageJob:
             "cropbox_pt": self.cropbox_pt,
             "rotation_deg": self.rotation_deg,
             "frame_pt": self.frame_pt,
+            "fonts_not_embedded": list(self.fonts_not_embedded),
         }
+
+
+def unembedded_fonts(page) -> list[str]:
+    """Base names of fonts a PyMuPDF page references without embedding them
+    (PyMuPDF reports the file extension as 'n/a'). Type3 fonts are glyph
+    procedures inside the PDF and never need embedding."""
+    names: set[str] = set()
+    try:
+        entries = page.get_fonts(full=True)
+    except Exception:
+        return []
+    for entry in entries:
+        ext = entry[1] if len(entry) > 1 else ""
+        ftype = entry[2] if len(entry) > 2 else ""
+        base = entry[3] if len(entry) > 3 else ""
+        if ext == "n/a" and ftype != "Type3":
+            names.add(str(base) or "unnamed")
+    return sorted(names)
 
 
 def collect_pages(inputs: list[InputSpec]) -> list[PageJob]:
@@ -63,6 +87,7 @@ def collect_pages(inputs: list[InputSpec]) -> list[PageJob]:
                         cropbox_pt=tuple(page.cropbox),
                         rotation_deg=page.rotation,
                         frame_pt=(r.width, r.height),
+                        fonts_not_embedded=tuple(unembedded_fonts(page)),
                     )
                 )
                 ordinal += 1

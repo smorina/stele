@@ -124,20 +124,36 @@ class LayoutSpec(BaseModel):
     pitch_y_um: float = 2600.0
     title_text: str = ""
     title_height_um: float = 2500.0  # naked-eye tier: ~2.5 mm (patent brick-text example)
-    title_band_um: float = 4000.0  # reserved strip at plate top
+    title_band_um: float = 4000.0  # reserved strip at plate top (inside the active area)
+    # horizontal placement of the title within the band, between the corner
+    # fiducials; a title too wide for that span is shrunk to fit (recorded)
+    title_align: Literal["left", "center", "right"] = "center"
     fiducial_size_um: float = 1500.0
     orientation_glyph_um: float = 1200.0  # height of the chirality "F"
     mirrored: bool = False
-    polarity: str = "clear_field"  # clear_field | dark_field (pass lands in M4)
+    # polarity is a DATA-TONE instruction to the mask shop, not a geometry
+    # change: the same polygons are drawn where the source has ink.
+    # clear_field: polygon = chrome retained -> dark text on bright glass.
+    # dark_field:  polygon = chrome removed  -> bright text in a chrome field
+    # (the writer exposes only the glyph areas, and bright-on-dark text can be
+    # easier on the eyes; the readability gate is the same modulation depth).
+    polarity: Literal["clear_field", "dark_field"] = "clear_field"
     # tier ladder (patent's discovery narrative): every page is placed once
     # per scale multiplier, largest first — naked-eye tiers lead the finder
     # to magnification. 1.0 = the standard pseudopage.
     tier_scales: list[float] = [1.0]
     # navigation furniture (page map, scale bar) reserved band at plate bottom
     nav_band_um: float = 0.0
+    # free-text description lines appended to the page map (newline-separated)
+    nav_text: str = ""
+    # character height of the page map / description; 0 = auto-fit to the band
+    nav_text_height_um: float = 0.0
+    nav_align: Literal["left", "center", "right"] = "center"
 
     @model_validator(mode="after")
     def _pitch_fits(self) -> LayoutSpec:
+        if self.pseudopage_width_um <= 0 or self.pseudopage_height_um <= 0:
+            raise ValueError("pseudopage width and height must be positive")
         if self.pitch_x_um < self.pseudopage_width_um:
             raise ValueError(
                 f"pitch_x ({self.pitch_x_um} um) < pseudopage width "
@@ -148,6 +164,14 @@ class LayoutSpec(BaseModel):
                 f"pitch_y ({self.pitch_y_um} um) < pseudopage height "
                 f"({self.pseudopage_height_um} um): pseudopages would overlap"
             )
+        if self.title_band_um < 0 or self.nav_band_um < 0:
+            raise ValueError("title_band_um and nav_band_um must be >= 0")
+        if self.title_height_um <= 0:
+            raise ValueError("title_height_um must be positive")
+        if self.nav_text_height_um < 0:
+            raise ValueError("nav_text_height_um must be >= 0 (0 = auto)")
+        if not self.tier_scales or any(t <= 0 for t in self.tier_scales):
+            raise ValueError("tier_scales must be a non-empty list of positive multipliers")
         return self
 
 

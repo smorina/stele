@@ -1,7 +1,10 @@
 # Reader profile: the bundled single-color microscope (patent FIG. 13 style).
+# The UI exposes all four numbers, and its microscope panel re-renders a built
+# plate through any (magnification, NA, wavelength) without rebuilding — the
+# way to write the specification for a custom reader.
 name: na025-580nm
-magnification: 100.0        # assumption: engineering default
-numerical_aperture: 0.25    # assumption: modest simple-objective NA (patent does not fix NA)
+magnification: 100.0        # assumption: engineering default; sets the eye-limited sampling (73 um / M on plate)
+numerical_aperture: 0.25    # assumption: modest simple-objective NA (patent does not fix NA); Rayleigh = 0.61 lambda / NA
 wavelength_nm: 580.0        # source: patent describes yellow-band illumination; 580 nm center is our choice
 contrast_criterion: 0.26    # assumption: Michelson legibility floor for the readability sim
 notes: Reader optics are the binding constraint on text size, not the mask writer.

@@ -89,14 +89,38 @@ compatible wheel.
 1. Open **Stele**. Your normal browser opens to a local address.
 2. Drop in one or more PDFs.
 3. Keep the six-inch generic preset unless a mask shop has given you different
-   rules.
+   rules. The collapsible sections under **Describe the plate** change the
+   plate size and border, the tone (clear or dark field), the page grid, the
+   title, the guide band's description, and the microscope; the sketch on the
+   right redraws as you type.
 4. Build a one-page trial first.
 5. Read the verification verdict, then download the GDSII file, preview, report,
-   and manifest.
+   and manifest. Use **Look through the microscope** on the result to view a
+   page region through other optics (magnification, NA, wavelength) without
+   rebuilding; **Previous runs** lists every earlier run, and **Open** brings
+   its documents, page choices, settings, plate name, plan, and result back
+   into the page so it can be rebuilt or adjusted. Every setting shows its
+   default beside its label; a changed one is tinted and gets a reset button,
+   and the section header counts the changes.
 
 Independent render-back verification is intentionally deep. Even a one-page
 trial can take several minutes and several GB of memory; Stele requires that
 trial before it unlocks a full-corpus build in the UI.
+
+### When the verdict says "missing or extra content" but the plate looks right
+
+The independent check renders the source page with a different PDF engine
+than the build. Fonts that a PDF references without embedding (very common:
+Helvetica, Times, Arial in older documents) are substituted by each engine
+with its own look-alike, so a few glyphs differ in shape between the two
+renders. The check cannot tell that from a dropped glyph, so it reports a
+failure — and the verdict now says next to it which fonts are not embedded,
+shows the defect heatmap inline, and the document card warns before you
+build. Re-exporting the PDF with embedded fonts (PDF/A, or "print to PDF")
+removes the ambiguity. Rule "violations" on ordinary body text are the other
+common finding: at ~109:1 a 1 µm writer minimum corresponds to text of about
+4 pt, and the verdict states the thinnest measured stroke so the warning can
+be judged.
 
 ### Why the result lists things software did not check
 

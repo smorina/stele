@@ -55,18 +55,27 @@ def airy_psf(na: float, wavelength_um: float, um_per_px: float, radius_px: int |
     return psf / psf.sum()
 
 
+def transmission_of(ink_binary: np.ndarray, polarity: str = "clear_field") -> np.ndarray:
+    """Plate transmission for drawn ink: clear field = chrome where drawn (dark
+    strokes), dark field = clear apertures where drawn (bright strokes)."""
+    ink = (ink_binary > 0).astype(np.float32)
+    return ink if polarity == "dark_field" else 1.0 - ink
+
+
 def simulate_view(
     ink_binary: np.ndarray,
     um_per_px: float,
     reader: ReaderProfile,
     defocus_um: float = 0.0,
+    polarity: str = "clear_field",
 ) -> tuple[np.ndarray, float]:
     """Transmitted-light intensity through the reader.
 
-    ink = chrome = dark (clear-field). Returns (intensity 0..1 at eye-limited
-    sampling, eye_um_per_px on plate).
+    clear_field: ink = chrome = dark strokes on a bright field; dark_field:
+    ink = aperture = bright strokes in a dark field. Returns (intensity 0..1
+    at eye-limited sampling, eye_um_per_px on plate).
     """
-    transmission = 1.0 - (ink_binary > 0).astype(np.float32)
+    transmission = transmission_of(ink_binary, polarity)
     psf = airy_psf(
         reader.numerical_aperture, reader.wavelength_nm / 1000.0, um_per_px
     ).astype(np.float32)
@@ -88,17 +97,31 @@ def simulate_view(
     return eye_view, factor * um_per_px
 
 
+DARK_FIELD_GATE_NOTE = (
+    "dark-field readability is gated on the same stroke modulation depth as clear field: "
+    "the diffraction image of a dark-field plate is the exact complement of the clear-field "
+    "image (PSF * (1 - ink) = 1 - PSF * ink), so the measured quantity is identical; any "
+    "perceptual advantage of bright-on-dark text is NOT credited"
+)
+
+
 def contrast_gate(
     ink_binary: np.ndarray,
     um_per_px: float,
     reader: ReaderProfile,
     wavelength_nm: float | None = None,
+    polarity: str = "clear_field",
 ) -> dict:
     """PSF-convolved stroke contrast plus the reader-profile VERDICT.
 
     The recorded legibility result for verification gates (review finding 2):
     pass = the thinnest measured stroke bin meets the Michelson criterion.
     assessed = False when the window holds too little ink to bin.
+
+    The measurement is always taken on the clear-field-convention intensity
+    (dark strokes on a bright field). For a dark-field plate that image is the
+    complement of what the eye sees, and the stroke modulation depth is the
+    same number — the gate does not become easier by flipping tone.
     """
     wl_nm = wavelength_nm if wavelength_nm is not None else reader.wavelength_nm
     transmission = 1.0 - (ink_binary > 0).astype(np.float32)
@@ -108,6 +131,9 @@ def contrast_gate(
     crit = reader.contrast_criterion
     r["wavelength_nm"] = wl_nm
     r["criterion"] = crit
+    r["polarity"] = polarity
+    if polarity == "dark_field":
+        r["note"] = DARK_FIELD_GATE_NOTE
     r["legible_bins"] = [b["stroke_um"] for b in r["bins"] if b["michelson"] >= crit]
     r["assessed"] = bool(r["bins"])
     r["pass"] = bool(r["bins"]) and r["bins"][0]["michelson"] >= crit

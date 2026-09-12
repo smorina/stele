@@ -30,8 +30,13 @@ from stele.config.validate import validate_profiles
 from stele.frontends.raster import raster_frontend
 from stele.ingest.normalize import collect_pages
 from stele.ir.model import Orientation, Polarity
-from stele.layout.engine import PlatePlan, plan_plates
-from stele.layout.fiducials import centered_orientation_glyph, fiducial_cross, stroke_text
+from stele.layout.engine import PlatePlan, band_text_area, plan_plates
+from stele.layout.fiducials import (
+    centered_orientation_glyph,
+    fiducial_cross,
+    measure_text_width,
+    place_title,
+)
 from stele.verify.chirality import check_chirality
 from stele.verify.drc import (
     budget_check,
@@ -131,8 +136,16 @@ def build_job(
         polarity=Polarity(profiles.layout.polarity),
         mirrored=profiles.layout.mirrored,
     )
-    if orientation.polarity is not Polarity.CLEAR_FIELD:
-        raise SystemExit("dark_field polarity lands in M4b; clear_field only for now")
+    # dark_field draws the SAME polygons (ink -> drawn); it is a data-tone
+    # instruction to the shop, recorded in the tone truth table below and
+    # reflected in the preview and the readability simulation
+    for plan in plans:
+        for band in ("title_band", "nav_band"):
+            if band in plan.reserved and band_text_area(plan, band) is None:
+                raise SystemExit(
+                    f"{band.replace('_', ' ')} leaves no room for text between the corner "
+                    f"fiducials; widen the plate, shrink the fiducials, or drop the band"
+                )
 
     page_ir_cache: OrderedDict[tuple[str, int], object] = OrderedDict()
     plate_reports: list[dict] = []
@@ -173,8 +186,13 @@ def build_job(
             "polarity": orientation.polarity.value,
             "mirrored": orientation.mirrored,
             "tone_truth_table": orientation.describe_tone_chain(),
-            "fab_tone_assumption": "positive-tone assumed (polygon = chrome retained); "
-            "placeholder until a vendor deck states the exposure/tone convention",
+            "fab_tone_assumption": (
+                "drawn polygon = chrome retained (clear-field data); "
+                if orientation.polarity is Polarity.CLEAR_FIELD
+                else "drawn polygon = chrome removed, i.e. a clear aperture (dark-field data); "
+            )
+            + "a data-tone instruction the vendor must confirm against their exposure/tone "
+            "convention — geometry is identical either way",
         },
         "plate_set": {
             "plates": len(plans),
@@ -185,7 +203,9 @@ def build_job(
     }
     # single-plate alias keys (the common case and the stable report schema)
     first = plate_reports[0]
-    for key in ("halftone", "ingest", "placements", "plan", "gds", "verify", "preview"):
+    for key in (
+        "halftone", "ingest", "placements", "plan", "furniture", "gds", "verify", "preview",
+    ):
         if key in first:
             report[key] = first[key]
     report["timings_s"] = {
@@ -401,23 +421,39 @@ def _build_one_plate(
     title = base_title
     if plan.plate_count > 1:
         title = f"{base_title} {plan.plate_index + 1}/{plan.plate_count}"
+    furniture_record: dict = {"polarity": profiles.layout.polarity}
     if profiles.layout.title_band_um > 0 and title:
-        band = plan.reserved["title_band"]
-        text_polys, _ = stroke_text(
+        # the title lives in the band's FREE span (between the NW/NE
+        # fiducials), aligned per the layout and centered vertically; a title
+        # too wide for the span is shrunk, never clipped or run into the marks
+        area = band_text_area(plan, "title_band")
+        if area is None:
+            raise SystemExit("the title band leaves no room for text between the corner fiducials")
+        text_polys, title_record = place_title(
             title,
             profiles.layout.title_height_um,
-            (band.x0 + profiles.layout.fiducial_size_um * 1.5,
-             band.y0 + (band.y1 - band.y0 - profiles.layout.title_height_um) / 2),
+            area.as_tuple(),
+            profiles.layout.title_align,
         )
         for p in shapely_to_gdstk(text_polys, layer=profiles.fab.layer,
                                   datatype=profiles.fab.datatype):
             furniture_cell.add(p)
+        furniture_record["title"] = title_record
 
-    # navigation band (M4): page map + scale bar, all inside the reserved band
+    # navigation band (M4): page map + description + labeled scale bar, laid
+    # out in the band's free span so nothing runs over the SW/SE fiducials or
+    # the orientation glyph (they share the band's corners; measured overlap)
     if "nav_band" in plan.reserved and plan.placements:
-        from stele.layout.navigation import page_map_lines, scale_bar, text_block
+        from stele.layout.navigation import (
+            fit_char_height,
+            labeled_scale_bar,
+            page_map_lines,
+            text_block_aligned,
+        )
 
-        band = plan.reserved["nav_band"]
+        area = band_text_area(plan, "nav_band")
+        if area is None:
+            raise SystemExit("the guide band leaves no room for text between the corner marks")
         sources = sorted({os.path.basename(pl.job.pdf_path) for pl in plan.placements})
         # SOURCE page ordinals, not placement ordinals: a tiered plate repeats
         # every page once per tier (review finding 7)
@@ -427,16 +463,45 @@ def _build_one_plate(
             min(ordinals), max(ordinals), sources,
             tiers=[pl.tier_scale for pl in plan.placements],
         )
-        char_h = min(600.0, (band.y1 - band.y0) / (len(lines) * 1.8))
-        for p in shapely_to_gdstk(
-            text_block(lines, (band.x0 + 200.0, band.y0 + char_h * 0.6), char_h),
-            layer=profiles.fab.layer, datatype=profiles.fab.datatype,
-        ):
+        lines += [ln.strip() for ln in profiles.layout.nav_text.splitlines() if ln.strip()]
+        band_h = area.y1 - area.y0
+        pad = min(200.0, band_h * 0.08)
+        bar_len = 1000.0
+        bar_label_h = max(60.0, min(300.0, band_h * 0.12))
+        bar_zone = bar_len + 150.0 + measure_text_width("1 MM", bar_label_h) + 2 * pad
+        with_bar = (area.x1 - area.x0) - bar_zone >= 20 * pad
+        text_x1 = area.x1 - bar_zone if with_bar else area.x1
+        text_area = (area.x0 + pad, area.y0 + pad, text_x1 - pad, area.y1 - pad)
+        requested_h = profiles.layout.nav_text_height_um
+        char_h = fit_char_height(lines, text_area, requested_h or 600.0)
+        nav_polys, nav_record = text_block_aligned(
+            lines, text_area, char_h, profiles.layout.nav_align
+        )
+        nav_record["requested_char_height_um"] = requested_h
+        nav_record["shrunk_to_fit"] = bool(requested_h and char_h < requested_h - 1e-6)
+        for p in shapely_to_gdstk(nav_polys, layer=profiles.fab.layer,
+                                  datatype=profiles.fab.datatype):
             furniture_cell.add(p)
-        for ring in scale_bar(band.x1 - 1400.0, band.y0 + 100.0, 1000.0, 100.0):
-            furniture_cell.add(
-                gdstk.Polygon(ring, layer=profiles.fab.layer, datatype=profiles.fab.datatype)
+        if with_bar:
+            rings, label_polys, bar_w = labeled_scale_bar(
+                text_x1 + pad, area.y0 + pad, bar_len, 100.0, label_height_um=bar_label_h
             )
+            for ring in rings:
+                furniture_cell.add(
+                    gdstk.Polygon(ring, layer=profiles.fab.layer, datatype=profiles.fab.datatype)
+                )
+            for p in shapely_to_gdstk(label_polys, layer=profiles.fab.layer,
+                                      datatype=profiles.fab.datatype):
+                furniture_cell.add(p)
+            nav_record["scale_bar"] = {
+                "origin_um": (round(text_x1 + pad, 3), round(area.y0 + pad, 3)),
+                "length_um": bar_len,
+                "label_height_um": round(bar_label_h, 3),
+                "width_um": round(bar_w, 3),
+            }
+        else:
+            nav_record["scale_bar"] = None
+        furniture_record["nav_band"] = nav_record
     content.add(gdstk.Reference(furniture_cell.name, (0.0, 0.0)))
 
     # --- top cell, mirroring applied as a whole-plate transform ---
@@ -489,6 +554,7 @@ def _build_one_plate(
             for pl in plan.placements
         ],
         "plan": plan.summary(),
+        "furniture": furniture_record,
         "gds": {
             "path": gds_path,
             "sha256": sha256_file(gds_path),
@@ -528,7 +594,12 @@ def _build_one_plate(
             manifest.output.preview_path() if plan.plate_count == 1
             else gds_path + ".preview.png"
         )
-        save_png(255 - arr, preview_path)
+        # as seen in transmitted light: clear field = dark features on bright
+        # glass; dark field = bright apertures in a chrome background
+        if orientation.polarity is Polarity.DARK_FIELD:
+            save_png(arr, preview_path)
+        else:
+            save_png(255 - arr, preview_path)
         plate_report["preview"] = preview_path
         plate_report["timings_s"]["preview"] = round(time.time() - t2, 1)
         _progress(progress, "previewing", 1, 1, "Preview ready")
@@ -543,7 +614,8 @@ UNENFORCED_FAB_FIELDS = [
     "coordinate limits (guaranteed by construction: 1nm DBU on <=1m plates)",
     "inspection policy (vendor conversation, not software-checkable)",
     "required marks beyond fiducials/plate-ID/orientation glyph",
-    "mask exposure tone (positive-tone assumed; see orientation.fab_tone_assumption)",
+    "mask exposure tone (the declared polarity is a data-tone instruction to the shop; "
+    "see orientation.fab_tone_assumption)",
 ]
 
 
@@ -771,7 +843,10 @@ def verify_plate(
             else:
                 r0, c0 = loc
                 window = fine[r0 : r0 + win[0], c0 : c0 + win[1]]
-                rres = contrast_gate(window, fine_um_per_px, profiles.reader)
+                rres = contrast_gate(
+                    window, fine_um_per_px, profiles.reader,
+                    polarity=profiles.layout.polarity,
+                )
                 rres["cell"] = cell
                 rres["window_um"] = [round(c0 * fine_um_per_px, 1),
                                      round(r0 * fine_um_per_px, 1),
@@ -780,7 +855,10 @@ def verify_plate(
                     from stele.passes.colorsep import CHANNEL_WAVELENGTHS_NM
 
                     rres["channels"] = {
-                        ch: contrast_gate(window, fine_um_per_px, profiles.reader, wl)
+                        ch: contrast_gate(
+                            window, fine_um_per_px, profiles.reader, wl,
+                            polarity=profiles.layout.polarity,
+                        )
                         for ch, wl in CHANNEL_WAVELENGTHS_NM.items()
                     }
                 readability[tier_key] = rres

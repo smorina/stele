@@ -2,12 +2,27 @@
 name: pseudopage-6in
 pseudopage_width_um: 1980.0   # source: patent example (0.078" = 1.98 mm)
 pseudopage_height_um: 2560.0  # source: patent example (0.101" ~= 2.56 mm)
-pitch_x_um: 2100.0            # assumption: 120 um gutters
-pitch_y_um: 2600.0            # assumption
+# decision (2026-09): no gutters — the pages' own margins separate the text.
+# The 4 um over the page size keeps each page's traced ink footprint (half a
+# build pixel past the frame) inside its own slot for the placement audit.
+pitch_x_um: 1984.0
+pitch_y_um: 2564.0
 title_text: ""                # default: plate name from the manifest
 title_height_um: 2500.0       # source: patent naked-eye brick text example (~2.5 mm)
-title_band_um: 4000.0
+title_band_um: 4000.0         # reserved INSIDE the active area, below the edge exclusion
+title_align: center           # left | center | right, within the span between the corner fiducials
 fiducial_size_um: 1500.0
 orientation_glyph_um: 1200.0
 mirrored: false
+# polarity is a data-tone instruction to the mask shop; the drawn polygons are
+# identical either way. clear_field: polygon = chrome (dark text on bright
+# glass). dark_field: polygon = clear aperture (bright text in a chrome field;
+# the writer exposes only the glyphs, which is usually faster).
 polarity: clear_field
+# navigation (guide) band at the plate bottom: page map + description + 1 mm
+# scale bar, laid out in the span clear of the corner fiducials and the
+# orientation glyph. 0 = off.
+nav_band_um: 0.0
+nav_text: ""                  # extra description lines (newline-separated) under the page map
+nav_text_height_um: 0.0       # 0 = auto-fit (max 600 um); otherwise the character height
+nav_align: center

@@ -15,89 +15,17 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
-from stele.config.manifest import InputSpec
-from stele.config.validate import validate_profiles
 from stele.doctor import run_doctor, write_doctor_json
-from stele.ingest.normalize import PageJob
-from stele.layout.engine import plan_plates
-from stele.ui.presets import preset_payload, profiles_from_settings
+from stele.ui.planning import plan_payload
+from stele.ui.presets import preset_payload
 from stele.ui.runs import RunManager, UploadStore
 
 MAX_JSON_BYTES = 1024 * 1024
 
 
 def _page_plan(store: UploadStore, body: dict[str, Any]) -> dict[str, Any]:
-    selections = body.get("documents") or []
-    if not selections:
-        raise ValueError("Choose at least one PDF")
-    jobs: list[PageJob] = []
-    source_pages = 0
-    ordinal = 0
-    for item in selections:
-        document = store.get(str(item.get("id", "")))
-        pages = str(item.get("pages", "all")).strip()
-        if not pages:
-            raise ValueError(
-                f"{document.name}: check All pages or enter page numbers such as 1-5, 8"
-            )
-        indices = InputSpec(path=str(document.path), pages=pages).page_indices(
-            document.page_count
-        )
-        if not indices:
-            raise ValueError(f"{document.name}: the page selection is empty")
-        source_pages += len(indices)
-        for index in indices:
-            page = document.pages[index]
-            jobs.append(
-                PageJob(
-                    pdf_path=str(document.path),
-                    pdf_sha256=document.sha256,
-                    page_index=index,
-                    ordinal=ordinal,
-                    mediabox_pt=tuple(page["mediabox_pt"]),
-                    cropbox_pt=tuple(page["cropbox_pt"]),
-                    rotation_deg=int(page["rotation_deg"]),
-                    frame_pt=(float(page["width_pt"]), float(page["height_pt"])),
-                )
-            )
-            ordinal += 1
-    profiles = profiles_from_settings(body.get("settings"))
-    validation = validate_profiles(profiles)
-    if not validation.ok:
-        raise ValueError("; ".join(validation.errors))
-    plans = plan_plates(
-        profiles.fab,
-        profiles.layout,
-        jobs,
-        fit_mode=profiles.content.fit_mode,
-    )
-    first = plans[0]
-    first_placement = first.placements[0] if first.placements else None
-    page_size = None
-    reduction = None
-    if first_placement is not None:
-        rect = first_placement.content_rect()
-        page_size = [
-            round((rect.x1 - rect.x0) / 1000, 2),
-            round((rect.y1 - rect.y0) / 1000, 2),
-        ]
-        reduction = round(1.0 / first_placement.scale, 1)
-    return {
-        "source_pages": source_pages,
-        "placements": sum(len(plan.placements) for plan in plans),
-        "plates": len(plans),
-        "usable_slots_first_plate": first.capacity(),
-        "theoretical_slots_first_plate": first.theoretical_slots,
-        "utilization": round(len(first.placements) / max(1, first.capacity()), 4),
-        "reduction": reduction,
-        "pseudopage_mm": page_size,
-        "warnings": validation.warnings,
-        "info": validation.info,
-        "estimate": (
-            "Verification can take several minutes and several GB of memory even for "
-            "one page. Complete the required trial before starting the full corpus."
-        ),
-    }
+    """Capacity + layout preview for the current selection and settings."""
+    return plan_payload(store, body)
 
 
 class SteleServer(ThreadingHTTPServer):
@@ -144,6 +72,9 @@ class SteleHandler(BaseHTTPRequestHandler):
                 result = run_doctor(self.server.store.home)
                 write_doctor_json(result, self.server.store.home)
                 self._send_json(200, result)
+                return
+            if parsed.path == "/api/runs":
+                self._send_json(200, {"runs": self.server.runs.history()})
                 return
             if parsed.path.startswith("/api/run/"):
                 run_id = parsed.path.removeprefix("/api/run/").strip("/")
@@ -214,6 +145,18 @@ class SteleHandler(BaseHTTPRequestHandler):
             if parsed.path.startswith("/api/run/") and parsed.path.endswith("/cancel"):
                 run_id = parsed.path.removeprefix("/api/run/").removesuffix("/cancel").strip("/")
                 self._send_json(200, self.server.runs.cancel(run_id))
+                return
+            if parsed.path.startswith("/api/run/") and parsed.path.endswith("/restore"):
+                run_id = (
+                    parsed.path.removeprefix("/api/run/").removesuffix("/restore").strip("/")
+                )
+                self._send_json(200, self.server.runs.restore(run_id))
+                return
+            if parsed.path.startswith("/api/run/") and parsed.path.endswith("/simulate"):
+                run_id = (
+                    parsed.path.removeprefix("/api/run/").removesuffix("/simulate").strip("/")
+                )
+                self._send_json(200, self.server.runs.simulate(run_id, body))
                 return
             self._send_json(404, {"error": "Not found"})
         except (ValueError, KeyError, TypeError) as exc:

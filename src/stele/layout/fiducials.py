@@ -59,6 +59,79 @@ def centered_orientation_glyph(
     return orientation_glyph(rect[0] + pad_x, rect[1] + pad_y, height)
 
 
+_TEXT_PX_H = 120  # render resolution per cap height
+
+
+def _text_bitmap(text: str) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+    """PIL default-font render of `text` as a binary bitmap plus its inked
+    row/column indices; None for text with no ink."""
+    font = ImageFont.load_default(size=_TEXT_PX_H)
+    bbox = font.getbbox(text)
+    pad = 8
+    img = Image.new("L", (bbox[2] - bbox[0] + 2 * pad, bbox[3] - bbox[1] + 2 * pad), 0)
+    draw = ImageDraw.Draw(img)
+    draw.text((pad - bbox[0], pad - bbox[1]), text, fill=255, font=font)
+    arr = np.asarray(img) > 128
+    rows = np.where(arr.any(axis=1))[0]
+    cols = np.where(arr.any(axis=0))[0]
+    if rows.size == 0:
+        return None
+    return arr, rows, cols
+
+
+def measure_text_width(text: str, char_height_um: float) -> float:
+    """Inked width (um) of `text` rendered by stroke_text at char_height_um,
+    without tracing geometry. Width scales linearly with height."""
+    if not text:
+        return 0.0
+    hit = _text_bitmap(text)
+    if hit is None:
+        return 0.0
+    _, rows, cols = hit
+    um_per_px = char_height_um / (rows[-1] - rows[0] + 1)
+    return float((cols[-1] - cols[0] + 1) * um_per_px)
+
+
+def place_title(
+    text: str,
+    height_um: float,
+    area: tuple[float, float, float, float],
+    align: str = "center",
+) -> tuple[list[Polygon], dict]:
+    """Title text inside a free band span, aligned horizontally and centered
+    vertically. A title wider than the span is shrunk to fit (never clipped,
+    never allowed to run into the corner fiducials); the record says so.
+    Returns (polygons, placement record)."""
+    x0, y0, x1, y1 = area
+    span_w = x1 - x0
+    span_h = y1 - y0
+    height = min(height_um, span_h)
+    width = measure_text_width(text, height)
+    shrunk = False
+    if width > span_w and width > 0:
+        height = height * span_w / width
+        width = span_w
+        shrunk = True
+    if align == "left":
+        tx = x0
+    elif align == "right":
+        tx = x1 - width
+    else:
+        tx = x0 + (span_w - width) / 2.0
+    ty = y0 + (span_h - height) / 2.0
+    polys, measured_w = stroke_text(text, height, (tx, ty))
+    record = {
+        "text": text,
+        "align": align,
+        "requested_height_um": round(height_um, 3),
+        "height_um": round(height, 3),
+        "width_um": round(measured_w, 3),
+        "origin_um": (round(tx, 3), round(ty, 3)),
+        "shrunk_to_fit": shrunk,
+    }
+    return polys, record
+
+
 def stroke_text(
     text: str, char_height_um: float, origin: tuple[float, float]
 ) -> tuple[list[Polygon], float]:
@@ -70,20 +143,12 @@ def stroke_text(
     """
     if not text:
         return [], 0.0
-    px_h = 120  # render resolution per cap height
-    font = ImageFont.load_default(size=px_h)
-    bbox = font.getbbox(text)
-    pad = 8
-    img = Image.new("L", (bbox[2] - bbox[0] + 2 * pad, bbox[3] - bbox[1] + 2 * pad), 0)
-    draw = ImageDraw.Draw(img)
-    draw.text((pad - bbox[0], pad - bbox[1]), text, fill=255, font=font)
-    arr = np.asarray(img) > 128
+    hit = _text_bitmap(text)
+    if hit is None:
+        return [], 0.0
+    arr, rows, cols = hit
 
     # measure actual glyph height in px to hit the requested cap height exactly
-    rows = np.where(arr.any(axis=1))[0]
-    cols = np.where(arr.any(axis=0))[0]
-    if rows.size == 0:
-        return [], 0.0
     glyph_h_px = rows[-1] - rows[0] + 1
     um_per_px = char_height_um / glyph_h_px
 
@@ -94,5 +159,5 @@ def stroke_text(
     from shapely.affinity import translate
 
     out = [translate(p, xoff=origin[0] - x_min, yoff=origin[1] - y_min) for p in polys]
-    width_um = (cols[-1] - cols[0] + 1) * um_per_px
+    width_um = float((cols[-1] - cols[0] + 1) * um_per_px)
     return out, width_um

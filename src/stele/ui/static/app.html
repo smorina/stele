@@ -32,9 +32,9 @@
       font: 15px/1.55 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       letter-spacing: -.008em;
     }
-    button, input, select { font: inherit; }
+    button, input, select, textarea { font: inherit; }
     button, a { -webkit-tap-highlight-color: transparent; }
-    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-visible {
       outline: 3px solid rgba(28, 105, 87, .32);
       outline-offset: 3px;
     }
@@ -61,6 +61,7 @@
       border: 1px solid var(--line); background: rgba(255,255,255,.56); color: var(--ink);
       border-radius: 11px; padding: 8px 12px; cursor: pointer;
     }
+    .quiet-button:disabled { opacity: .5; cursor: not-allowed; }
     .hero { display: grid; grid-template-columns: 1.35fr .65fr; gap: 50px; padding: 70px 0 54px; }
     .eyebrow {
       display: inline-flex; gap: 8px; align-items: center; color: var(--deep);
@@ -97,6 +98,7 @@
       background: var(--deep); color: white; font-weight: 780; font-size: 13px;
     }
     h2 { margin: 1px 0 3px; font-size: 20px; line-height: 1.2; letter-spacing: -.025em; }
+    h3 { font-size: 16px; margin: 0 0 8px; }
     .sub { margin: 0; color: var(--muted); font-size: 13px; }
     .card-body { padding: 20px 24px 24px; }
     .dropzone {
@@ -123,13 +125,16 @@
     }
     .document-name { font-weight: 720; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .document-meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .document-fonts { color: #744817; font-size: 12px; margin-top: 6px; }
     label { display: block; color: #445048; font-size: 12px; font-weight: 720; margin-bottom: 6px; }
-    input, select {
+    input, select, textarea {
       width: 100%; border: 1px solid #c9cec9; border-radius: 10px; background: white;
       color: var(--ink); padding: 10px 11px; min-height: 43px;
     }
-    input:hover, select:hover { border-color: #9da69f; }
+    textarea { min-height: 78px; resize: vertical; }
+    input:hover, select:hover, textarea:hover { border-color: #9da69f; }
     .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field-grid.thirds { grid-template-columns: 1fr 1fr 1fr; }
     .field-grid .wide { grid-column: 1 / -1; }
     .field-help { color: var(--muted); font-size: 11px; margin-top: 6px; }
     .page-controls { min-width: 0; }
@@ -147,24 +152,52 @@
     }
     .check input { width: 18px; min-height: 18px; margin: 2px 0 0; accent-color: var(--deep); }
     .check label { margin: 0; font-size: 13px; }
+    details.advanced {
+      border: 1px solid var(--line); border-radius: 12px; background: white;
+      margin-top: 12px; padding: 0 14px;
+    }
+    details.advanced summary {
+      padding: 12px 0; font-weight: 740; cursor: pointer; list-style: none;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    details.advanced summary::-webkit-details-marker { display: none; }
+    details.advanced summary::after { content: "+"; color: var(--muted); font-size: 18px; line-height: 1; }
+    details.advanced[open] summary::after { content: "–"; }
+    details.advanced summary small { color: var(--muted); font-weight: 500; font-size: 12px; flex: 1; }
+    details.advanced .field-grid { padding: 4px 0 14px; }
+    .dflt { float: right; font-weight: 500; color: var(--muted); font-size: 11px; display: inline-flex; gap: 6px; align-items: center; }
+    .dflt button { display: none; border: 1px solid #dfbb76; background: var(--amber); color: #744817; border-radius: 999px; padding: 0 7px; font-size: 10px; font-weight: 760; cursor: pointer; line-height: 16px; }
+    .dflt.changed button { display: inline-block; }
+    input.changed, select.changed, textarea.changed { border-color: #dfbb76; background: #fffaf0; }
+    .check input.changed { outline: 2px solid #dfbb76; outline-offset: 1px; }
+    .changed-count { color: #744817; background: var(--amber); border-radius: 999px; padding: 1px 7px; font-size: 11px; font-weight: 720; }
+    .changed-count:empty { display: none; }
+    .readout {
+      display: grid; gap: 6px; font-size: 12px; color: #445048; background: var(--paper);
+      border-radius: 10px; padding: 11px 12px; margin: 0 0 14px;
+    }
+    .readout b { color: var(--ink); }
     .summary { position: sticky; top: 18px; }
     .summary .card-body { padding-top: 23px; }
     .plate-sketch {
-      aspect-ratio: 1; width: 100%; border-radius: 12px; background: #e4e7df;
-      border: 1px solid #c7cbc4; padding: 9%; display: grid; place-items: center; overflow: hidden;
+      width: 100%; border-radius: 12px; background: #e4e7df; border: 1px solid #c7cbc4;
+      padding: 6%; display: block;
     }
-    .plate-inner {
-      width: 100%; height: 100%; border: 2px solid #43514a; position: relative;
-      background:
-        repeating-linear-gradient(0deg, transparent 0 7%, rgba(20,63,54,.16) 7% 7.8%),
-        repeating-linear-gradient(90deg, transparent 0 7%, rgba(20,63,54,.16) 7% 7.8%),
-        #f4f5ee;
-    }
-    .plate-inner::before, .plate-inner::after {
-      content: ""; position: absolute; left: 0; right: 0; background: var(--deep);
-    }
-    .plate-inner::before { height: 8%; top: 0; }
-    .plate-inner::after { height: 6%; bottom: 0; opacity: .75; }
+    .plate-sketch svg { width: 100%; height: auto; display: block; }
+    .plate-sketch .sk-plate { fill: #f4f5ee; stroke: #43514a; stroke-width: 2px; vector-effect: non-scaling-stroke; }
+    .plate-sketch .sk-active { fill: none; stroke: #43514a; stroke-width: 1px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+    .plate-sketch .sk-band { fill: rgba(20, 63, 54, .10); stroke: none; }
+    .plate-sketch .sk-fid { fill: rgba(20, 63, 54, .55); stroke: none; }
+    .plate-sketch .sk-glyph { fill: rgba(165, 65, 50, .8); stroke: none; }
+    .plate-sketch .sk-pages { fill: rgba(20, 63, 54, .28); stroke: #f4f5ee; stroke-width: .5px; vector-effect: non-scaling-stroke; }
+    .plate-sketch .sk-title { fill: var(--deep); }
+    .plate-sketch .sk-navtext { fill: rgba(20, 63, 54, .6); }
+    .plate-sketch svg.dark .sk-plate { fill: #1d2622; }
+    .plate-sketch svg.dark .sk-pages { fill: rgba(240, 244, 236, .55); stroke: #1d2622; }
+    .plate-sketch svg.dark .sk-title, .plate-sketch svg.dark .sk-navtext { fill: #f4f5ee; }
+    .plate-sketch svg.dark .sk-fid { fill: rgba(240, 244, 236, .8); }
+    .plate-sketch svg.dark .sk-band { fill: rgba(240, 244, 236, .08); }
+    .sketch-caption { color: var(--muted); font-size: 11px; margin: 8px 0 0; text-align: center; }
     .metrics { display: grid; gap: 13px; margin: 21px 0; }
     .metric { display: flex; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--line); padding-bottom: 11px; }
     .metric:last-child { border: 0; padding-bottom: 0; }
@@ -172,7 +205,10 @@
     .metric strong { text-align: right; }
     .notice { border-radius: 11px; padding: 12px 13px; font-size: 12px; margin: 13px 0; background: var(--blue); }
     .notice.warning { background: var(--amber); }
+    .notice[hidden] { display: none; }
+    .notice ul { margin: 6px 0 0; padding-left: 18px; }
     .actions { display: grid; gap: 9px; margin-top: 18px; }
+    .actions-row { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 12px; }
     .primary, .secondary, .danger {
       border-radius: 11px; min-height: 48px; padding: 11px 16px; cursor: pointer;
       font-weight: 760; border: 1px solid transparent;
@@ -200,11 +236,18 @@
     .verdict-state { text-transform: uppercase; letter-spacing: .1em; font-weight: 800; font-size: 11px; }
     .verdict h3 { font-size: 25px; margin: 5px 0; letter-spacing: -.035em; }
     .verdict p { margin: 0; }
+    .verdict .tone { margin-top: 8px; font-size: 13px; color: #33403a; }
     .findings { display: grid; gap: 10px; margin: 16px 0; }
     .finding { border: 1px solid var(--line); border-radius: 11px; padding: 13px; background: white; }
     .finding strong { display: block; margin-bottom: 3px; }
     .finding small { display: block; color: var(--muted); }
     .preview { width: 100%; border: 1px solid var(--line); border-radius: 12px; background: white; margin-top: 14px; }
+    .heatmaps { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; margin-top: 10px; }
+    .heatmaps figure { margin: 0; border: 1px solid var(--line); border-radius: 10px; background: white; padding: 6px; }
+    .heatmaps img { width: 100%; display: block; border-radius: 6px; }
+    .heatmaps figcaption { font-size: 11px; color: var(--muted); margin-top: 5px; }
+    .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; border: 1px solid rgba(0,0,0,.15); }
     .downloads { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 15px; }
     .download {
       text-decoration: none; color: var(--deep); border: 1px solid var(--deep);
@@ -213,6 +256,26 @@
     details { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
     summary { cursor: pointer; font-weight: 720; }
     code { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+    pre { font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; background: #f1f0e9; border-radius: 8px; padding: 10px; max-height: 260px; overflow: auto; }
+    .microscope .field-grid { margin-top: 10px; }
+    .sim-view { margin-top: 14px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, .8fr); gap: 16px; align-items: start; }
+    .sim-view img { width: 100%; image-rendering: pixelated; border: 1px solid var(--line); border-radius: 10px; background: #000; }
+    .sim-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .sim-table th, .sim-table td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+    .sim-table td.ok { color: #1f6c4e; font-weight: 720; }
+    .sim-table td.bad { color: #a53b2d; font-weight: 720; }
+    .chip { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 760; letter-spacing: .04em; text-transform: uppercase; }
+    .chip.pass { background: var(--mint); color: #1f6c4e; }
+    .chip.pass_with_warnings { background: var(--amber); color: #744817; }
+    .chip.fail { background: var(--red); color: #a53b2d; }
+    .chip.unverified, .chip.incomplete, .chip.error, .chip.cancelled { background: #e4e6e3; color: #4a544f; }
+    .chip.running, .chip.queued { background: var(--blue); color: #274a7a; }
+    .history { display: grid; gap: 8px; }
+    .history-row {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center;
+      border: 1px solid var(--line); border-radius: 11px; padding: 10px 12px; background: white; font-size: 13px;
+    }
+    .history-row .meta { color: var(--muted); font-size: 12px; }
     dialog {
       width: min(760px, calc(100% - 30px)); max-height: min(82vh, 740px);
       border: 0; border-radius: 18px; padding: 0; box-shadow: var(--shadow); background: var(--surface);
@@ -227,17 +290,18 @@
     .error-box { background: var(--red); border: 1px solid #df9e91; border-radius: 11px; padding: 12px; margin-top: 13px; display: none; }
     .error-box.visible { display: block; }
     .muted { color: var(--muted); }
+    [hidden] { display: none !important; }
     @media (max-width: 820px) {
-      .hero, .workflow { grid-template-columns: 1fr; }
+      .hero, .workflow, .sim-view { grid-template-columns: 1fr; }
       .hero { gap: 25px; padding-top: 45px; }
       .summary { position: static; }
-      .field-grid { grid-template-columns: 1fr; }
+      .field-grid, .field-grid.thirds { grid-template-columns: 1fr; }
       .field-grid .wide { grid-column: auto; }
     }
     @media (max-width: 540px) {
       .shell { width: min(100% - 22px, 1180px); }
       .local-chip { display: none; }
-      .document { grid-template-columns: 1fr; }
+      .document, .history-row { grid-template-columns: 1fr; }
       .card-head, .card-body { padding-left: 17px; padding-right: 17px; }
       .doctor-check { grid-template-columns: 45px 1fr; }
       .doctor-check span:last-child { grid-column: 1 / -1; }
@@ -296,14 +360,14 @@
         <section class="card">
           <div class="card-head">
             <span class="step">2</span>
-            <div><h2>Describe the plate</h2><p class="sub">The defaults favor a trustworthy first build.</p></div>
+            <div><h2>Describe the plate</h2><p class="sub">The defaults favor a trustworthy first build. Open a section below to change the plate, the page grid, the title, the guide band, or the microscope.</p></div>
           </div>
           <div class="card-body">
             <div class="field-grid">
               <div class="wide">
                 <label for="plate-name">Plate name</label>
                 <input id="plate-name" value="STELE-0001" maxlength="64">
-                <div class="field-help">Etched into the title band large enough to read without a microscope.</div>
+                <div class="field-help">Follows the first PDF’s file name until you edit it. Etched into the title band large enough to read without a microscope, unless you set a different title below.</div>
               </div>
               <div>
                 <label for="preset">Plate preset</label>
@@ -335,8 +399,166 @@
               </div>
               <div class="wide check">
                 <input id="nav-band" type="checkbox" checked>
-                <label for="nav-band">Add a navigation band with a page map and scale bar.</label>
+                <label for="nav-band">Add a guide band at the bottom with a page map, a description, and a scale bar.</label>
               </div>
+            </div>
+
+            <details class="advanced" id="adv-plate">
+              <summary>Plate, border and tone <span class="changed-count"></span> <small>size of the glass, unusable edge, clear or dark field, mirroring</small></summary>
+              <div class="field-grid">
+                <div>
+                  <label for="plate-size">Plate size</label>
+                  <select id="plate-size"></select>
+                  <div class="field-help" id="plate-size-note"></div>
+                </div>
+                <div>
+                  <label for="edge-exclusion-mm">Unusable border (mm per side)</label>
+                  <input id="edge-exclusion-mm" type="number" min="0" max="25" step="0.5" value="3">
+                  <div class="field-help">Kept clear for handling and edge chips. The title band sits inside this border, not in it.</div>
+                </div>
+                <div class="custom-size" hidden>
+                  <label for="plate-width-mm">Custom width (mm)</label>
+                  <input id="plate-width-mm" type="number" min="10" max="1000" step="0.1" value="152.4">
+                </div>
+                <div class="custom-size" hidden>
+                  <label for="plate-height-mm">Custom height (mm)</label>
+                  <input id="plate-height-mm" type="number" min="10" max="1000" step="0.1" value="152.4">
+                </div>
+                <div class="wide">
+                  <label for="polarity">Plate tone</label>
+                  <select id="polarity"></select>
+                  <div class="field-help" id="polarity-note"></div>
+                </div>
+                <div class="wide check">
+                  <input id="mirrored" type="checkbox">
+                  <label for="mirrored">Mirror the whole plate, for reading with the chrome side away from the viewer. The orientation glyph is machine-checked against the actual file either way.</label>
+                </div>
+              </div>
+            </details>
+
+            <details class="advanced" id="adv-pages">
+              <summary>Pages on glass <span class="changed-count"></span> <small>page size, gutters, magnification ladder</small></summary>
+              <div class="field-grid">
+                <div>
+                  <label for="pseudopage-width-um">Page width on glass (µm)</label>
+                  <input id="pseudopage-width-um" type="number" min="200" max="100000" step="10" value="1980">
+                </div>
+                <div>
+                  <label for="pseudopage-height-um">Page height on glass (µm)</label>
+                  <input id="pseudopage-height-um" type="number" min="200" max="100000" step="10" value="2560">
+                  <div class="field-help">1980 × 2560 µm is the patent's example, about 109:1 for a US Letter page. Each page is scaled proportionally to fit inside this box, never stretched: a page of a different shape is centered with empty space on one side, and “Page on glass” on the right is the size the content actually gets.</div>
+                </div>
+                <div>
+                  <label for="gutter-x-um">Gap between columns (µm)</label>
+                  <input id="gutter-x-um" type="number" min="0" max="50000" step="10" value="0">
+                </div>
+                <div>
+                  <label for="gutter-y-um">Gap between rows (µm)</label>
+                  <input id="gutter-y-um" type="number" min="0" max="50000" step="10" value="0">
+                  <div class="field-help">0 = pages touch and their own margins separate the text. A 4 µm safety gap is always kept so a page edge can never cross into its neighbour's slot.</div>
+                </div>
+                <div>
+                  <label for="tiers">Magnification ladder</label>
+                  <select id="tiers"></select>
+                  <div class="field-help">Places every page once per size, largest first, so a finder with a loupe is led to the microscope. Costs slots: a 4× copy takes 16.</div>
+                </div>
+                <div>
+                  <label for="expected-min-text-pt">Smallest text in the document (pt)</label>
+                  <input id="expected-min-text-pt" type="number" min="1" max="72" step="0.5" value="8">
+                  <div class="field-help">Feeds the early warning only; the real check is measured after the build.</div>
+                </div>
+              </div>
+            </details>
+
+            <details class="advanced" id="adv-title">
+              <summary>Title band <span class="changed-count"></span> <small>text, height, band, alignment</small></summary>
+              <div class="field-grid">
+                <div class="wide">
+                  <label for="title-text">Title on the plate</label>
+                  <input id="title-text" maxlength="120" placeholder="Blank uses the plate name">
+                  <div class="field-help">Plate sets get “1/3” appended. A title too wide for the space between the corner marks is shrunk to fit and reported.</div>
+                </div>
+                <div>
+                  <label for="title-height-mm">Title height (mm)</label>
+                  <input id="title-height-mm" type="number" min="0.2" max="30" step="0.1" value="2.5">
+                  <div class="field-help">2.5 mm is readable with the naked eye.</div>
+                </div>
+                <div>
+                  <label for="title-band-mm">Title band (mm)</label>
+                  <input id="title-band-mm" type="number" min="0" max="40" step="0.5" value="4">
+                  <div class="field-help">Reserved at the top of the usable area; no pages are placed there. 0 turns the title off.</div>
+                </div>
+                <div>
+                  <label for="title-align">Title alignment</label>
+                  <select id="title-align">
+                    <option value="center" selected>Centered</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="readout" id="title-readout"><span>Vertical budget appears after the plate is calculated.</span></div>
+                </div>
+              </div>
+            </details>
+
+            <details class="advanced" id="adv-nav">
+              <summary>Guide band <span class="changed-count"></span> <small>description text at the bottom, size, alignment</small></summary>
+              <div class="field-grid">
+                <div class="wide">
+                  <label for="nav-text">Plate description</label>
+                  <textarea id="nav-text" maxlength="600" placeholder="Optional lines etched under the page map, e.g. who made this plate and when."></textarea>
+                  <div class="field-help">Up to 6 lines. The page map (plate name, plate k of n, page range, reading order, sources) is always etched above it.</div>
+                </div>
+                <div>
+                  <label for="nav-band-mm">Guide band (mm)</label>
+                  <input id="nav-band-mm" type="number" min="1" max="40" step="0.5" value="5">
+                </div>
+                <div>
+                  <label for="nav-text-height-um">Text height (µm)</label>
+                  <input id="nav-text-height-um" type="number" min="0" max="5000" step="10" value="0">
+                  <div class="field-help">0 = automatic (up to 600 µm, shrunk so every line fits). The text is kept clear of the corner marks and the orientation glyph.</div>
+                </div>
+                <div>
+                  <label for="nav-align">Alignment</label>
+                  <select id="nav-align">
+                    <option value="center" selected>Centered</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                  </select>
+                </div>
+              </div>
+            </details>
+
+            <details class="advanced" id="adv-reader">
+              <summary>Microscope <span class="changed-count"></span> <small>magnification, NA, wavelength, contrast criterion</small></summary>
+              <div class="field-grid">
+                <div>
+                  <label for="magnification">Magnification (×)</label>
+                  <input id="magnification" type="number" min="1" max="2000" step="1" value="100">
+                </div>
+                <div>
+                  <label for="numerical-aperture">Numerical aperture (NA)</label>
+                  <input id="numerical-aperture" type="number" min="0.02" max="1.4" step="0.01" value="0.25">
+                </div>
+                <div>
+                  <label for="wavelength-nm">Wavelength (nm)</label>
+                  <input id="wavelength-nm" type="number" min="350" max="1100" step="5" value="580">
+                </div>
+                <div>
+                  <label for="contrast-criterion">Minimum readable contrast</label>
+                  <input id="contrast-criterion" type="number" min="0.01" max="0.99" step="0.01" value="0.26">
+                </div>
+                <div class="wide">
+                  <div class="readout" id="optics-readout"><span>Optics estimates appear after the plate is calculated.</span></div>
+                  <div class="field-help">These optics do not change the plate. They set the readability simulation's verdict, and after a build you can vary them in the microscope panel without rebuilding.</div>
+                </div>
+              </div>
+            </details>
+
+            <div class="actions-row">
+              <button class="quiet-button" id="reset-all" type="button" hidden>Reset every setting to its default</button>
+              <span class="field-help" style="align-self:center">Each setting shows its default beside its label; a changed setting is tinted and gets a reset button.</span>
             </div>
             <div class="notice warning"><strong>Engineering assumptions.</strong> The generic writer limits and microscope optics are not vendor facts. They are recorded in every report so they cannot be mistaken for confirmed requirements.</div>
           </div>
@@ -352,6 +574,7 @@
             <div class="progress-label"><span id="progress-stage">Preparing</span><span id="progress-count"></span></div>
             <button class="danger" id="cancel-button" type="button" hidden>Cancel build</button>
             <div class="error-box" id="run-error" role="alert"></div>
+            <details id="run-diagnostic" hidden><summary>Technical details</summary><pre id="run-diagnostic-text"></pre></details>
           </div>
         </section>
 
@@ -362,18 +585,34 @@
           </div>
           <div class="card-body" id="result-body"></div>
         </section>
+
+        <section class="card" id="history-card">
+          <div class="card-head">
+            <span class="step">↺</span>
+            <div><h2>Previous runs</h2><p class="sub">Every run stays under ~/.stele/runs. Open restores its documents, page choices, settings, plate name, plan, and result.</p></div>
+          </div>
+          <div class="card-body">
+            <div class="history" id="history-list"><span class="muted">Loading…</span></div>
+            <div class="actions-row"><button class="quiet-button" id="history-refresh" type="button">Refresh list</button></div>
+          </div>
+        </section>
       </div>
 
       <aside class="card summary">
         <div class="card-head"><div><h2>What you’ll get</h2><p class="sub" id="plan-status">Choose a PDF to calculate the plate.</p></div></div>
         <div class="card-body">
-          <div class="plate-sketch" aria-hidden="true"><div class="plate-inner"></div></div>
+          <div class="plate-sketch" aria-hidden="true"><svg id="plate-sketch" viewBox="0 0 100 100"><rect class="sk-plate" x="0" y="0" width="100" height="100"/></svg></div>
+          <p class="sketch-caption" id="sketch-caption">Plate sketch: title band on top, guide band below, corner marks, and the pages as placed.</p>
           <div class="metrics">
             <div class="metric"><span>Documents</span><strong id="metric-pages">—</strong></div>
             <div class="metric"><span>Plates</span><strong id="metric-plates">—</strong></div>
             <div class="metric"><span>Reduction</span><strong id="metric-reduction">—</strong></div>
             <div class="metric"><span>Page on glass</span><strong id="metric-size">—</strong></div>
+            <div class="metric"><span>Usable slots</span><strong id="metric-slots">—</strong></div>
+            <div class="metric"><span>Plate</span><strong id="metric-plate">—</strong></div>
           </div>
+          <div class="notice" id="optics-note" hidden></div>
+          <div class="notice warning" id="calc-warnings" hidden></div>
           <div class="notice" id="estimate">Verification can take several minutes and several GB of memory even for one page. Complete the required trial before starting the full corpus.</div>
           <div class="error-box" id="calc-error" role="alert"></div>
           <div class="actions">
@@ -397,8 +636,10 @@
     const token = params.get("token") || "";
     const state = {
       documents: [], plan: null, runId: null, polling: null,
-      trialComplete: false, trialSeconds: null
+      trialComplete: false, trialSeconds: null, preset: null, currentRun: null,
+      plateNameTouched: false
     };
+    const ALL_FIELDS = () => ({ ...FIELDS, ...CHECKS });
 
     const $ = (id) => document.getElementById(id);
     const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => ({
@@ -406,6 +647,7 @@
     })[c]);
     const formatBytes = (bytes) => bytes > 1e9 ? `${(bytes / 1e9).toFixed(2)} GB` :
       bytes > 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.ceil(bytes / 1e3)} KB`;
+    const num = (id) => Number($(id).value);
 
     async function api(path, options = {}) {
       const headers = new Headers(options.headers || {});
@@ -420,13 +662,140 @@
       return payload;
     }
 
+    // settings key -> control id; checkboxes listed separately
+    const FIELDS = {
+      dpi: "dpi", content_kind: "content-kind", min_feature_um: "min-feature",
+      expected_min_text_pt: "expected-min-text-pt",
+      plate_size: "plate-size", plate_width_mm: "plate-width-mm", plate_height_mm: "plate-height-mm",
+      edge_exclusion_mm: "edge-exclusion-mm", polarity: "polarity",
+      pseudopage_width_um: "pseudopage-width-um", pseudopage_height_um: "pseudopage-height-um",
+      gutter_x_um: "gutter-x-um", gutter_y_um: "gutter-y-um", tiers: "tiers",
+      title_text: "title-text", title_height_mm: "title-height-mm", title_band_mm: "title-band-mm",
+      title_align: "title-align",
+      nav_band_mm: "nav-band-mm", nav_text: "nav-text", nav_text_height_um: "nav-text-height-um",
+      nav_align: "nav-align",
+      magnification: "magnification", numerical_aperture: "numerical-aperture",
+      wavelength_nm: "wavelength-nm", contrast_criterion: "contrast-criterion"
+    };
+    const CHECKS = { nav_band: "nav-band", mirrored: "mirrored" };
+    const NUMERIC = new Set([
+      "dpi", "min_feature_um", "expected_min_text_pt", "plate_width_mm", "plate_height_mm",
+      "edge_exclusion_mm", "pseudopage_width_um", "pseudopage_height_um", "gutter_x_um",
+      "gutter_y_um", "title_height_mm", "title_band_mm", "nav_band_mm", "nav_text_height_um",
+      "magnification", "numerical_aperture", "wavelength_nm", "contrast_criterion"
+    ]);
+
     function settings() {
-      return {
-        dpi: Number($("dpi").value),
-        content_kind: $("content-kind").value,
-        min_feature_um: Number($("min-feature").value),
-        nav_band: $("nav-band").checked
-      };
+      const out = {};
+      for (const [key, id] of Object.entries(FIELDS)) {
+        const value = $(id).value;
+        out[key] = NUMERIC.has(key) ? Number(value) : value;
+      }
+      for (const [key, id] of Object.entries(CHECKS)) out[key] = $(id).checked;
+      return out;
+    }
+    function applySettings(values) {
+      if (!values) return;
+      for (const [key, id] of Object.entries(FIELDS)) {
+        if (values[key] !== undefined && values[key] !== null) $(id).value = values[key];
+      }
+      for (const [key, id] of Object.entries(CHECKS)) {
+        if (values[key] !== undefined) $(id).checked = Boolean(values[key]);
+      }
+      syncPlateSize();
+      syncPolarityNote();
+      refreshChangedMarkers();
+    }
+
+    // --- defaults: every setting shows its default, changed ones can be reset ---
+    function defaultOf(key) { return state.preset?.settings?.[key]; }
+    function controlOf(key) { return $(ALL_FIELDS()[key]); }
+    function displayDefault(key) {
+      const el = controlOf(key);
+      const value = defaultOf(key);
+      if (el.type === "checkbox") return value ? "on" : "off";
+      if (el.tagName === "SELECT") {
+        const option = [...el.options].find((o) => String(o.value) === String(value));
+        return option ? option.textContent.split(" · ")[0] : String(value);
+      }
+      return value === "" || value === undefined ? "blank" : String(value);
+    }
+    function isDefault(key) {
+      const el = controlOf(key);
+      const value = defaultOf(key);
+      if (value === undefined) return true;
+      if (el.type === "checkbox") return el.checked === Boolean(value);
+      if (NUMERIC.has(key)) return Number(el.value) === Number(value);
+      return String(el.value) === String(value);
+    }
+    function resetSetting(key) {
+      const el = controlOf(key);
+      const value = defaultOf(key);
+      if (value === undefined) return;
+      if (el.type === "checkbox") el.checked = Boolean(value); else el.value = value;
+      syncPlateSize();
+      syncPolarityNote();
+      refreshChangedMarkers();
+      queueCalculate();
+    }
+    function decorateDefaults() {
+      for (const [key, id] of Object.entries(ALL_FIELDS())) {
+        const label = document.querySelector(`label[for="${id}"]`);
+        if (!label || label.querySelector(".dflt")) continue;
+        const hint = document.createElement("span");
+        hint.className = "dflt";
+        hint.innerHTML = '<span class="dflt-text"></span><button type="button" title="Reset this setting to its default">reset</button>';
+        hint.querySelector("button").addEventListener("click", (event) => { event.preventDefault(); resetSetting(key); });
+        label.appendChild(hint);
+      }
+      refreshChangedMarkers();
+    }
+    function refreshChangedMarkers() {
+      if (!state.preset) return;
+      const counts = {};
+      let anyChanged = false;
+      for (const [key, id] of Object.entries(ALL_FIELDS())) {
+        const el = $(id);
+        const same = isDefault(key);
+        anyChanged = anyChanged || !same;
+        el.classList.toggle("changed", !same);
+        const hint = document.querySelector(`label[for="${id}"] .dflt`);
+        if (hint) {
+          hint.querySelector(".dflt-text").textContent = `default ${displayDefault(key)}`;
+          hint.classList.toggle("changed", !same);
+        }
+        const section = el.closest("details.advanced");
+        if (section && !same) counts[section.id] = (counts[section.id] || 0) + 1;
+      }
+      document.querySelectorAll("details.advanced").forEach((section) => {
+        const badge = section.querySelector(".changed-count");
+        const n = counts[section.id] || 0;
+        if (badge) badge.textContent = n ? `${n} changed` : "";
+      });
+      $("reset-all").hidden = !anyChanged;
+    }
+    function buildChoices(preset) {
+      const choices = preset.choices || {};
+      $("plate-size").innerHTML = (choices.plate_sizes || []).map((size) =>
+        `<option value="${escapeHtml(size.id)}">${escapeHtml(size.label)}</option>`).join("");
+      $("tiers").innerHTML = (choices.tiers || []).map((tier) => {
+        const label = tier.scales.length === 1 ? "Single size · every page once" :
+          `${tier.scales.map((s) => `${s}×`).join(" + ")} · every page ${tier.scales.length} times`;
+        return `<option value="${escapeHtml(tier.id)}">${escapeHtml(label)}</option>`;
+      }).join("");
+      $("polarity").innerHTML = (choices.polarities || []).map((p) =>
+        `<option value="${escapeHtml(p.id)}">${escapeHtml(p.label)}</option>`).join("");
+      $("preset").innerHTML = `<option>${escapeHtml(preset.name)}</option>`;
+    }
+    function syncPlateSize() {
+      const custom = $("plate-size").value === "custom";
+      document.querySelectorAll(".custom-size").forEach((el) => { el.hidden = !custom; });
+      const size = (state.preset?.choices?.plate_sizes || []).find((s) => s.id === $("plate-size").value);
+      $("plate-size-note").textContent = size ? size.note : "";
+    }
+    function syncPolarityNote() {
+      const pol = (state.preset?.choices?.polarities || []).find((p) => p.id === $("polarity").value);
+      $("polarity-note").textContent = pol ? pol.help : "";
     }
     function selections() {
       return state.documents.map((doc) => ({
@@ -440,6 +809,11 @@
       const box = $(id);
       box.textContent = message;
       box.classList.toggle("visible", Boolean(message));
+    }
+    function showNotice(id, html = "") {
+      const box = $(id);
+      box.innerHTML = html;
+      box.hidden = !html;
     }
     function syncBuildButton() {
       $("build-button").disabled = !state.trialComplete;
@@ -459,6 +833,7 @@
           <div>
             <div class="document-name" title="${escapeHtml(doc.name)}">${escapeHtml(doc.name)}</div>
             <div class="document-meta">${doc.page_count} page${doc.page_count === 1 ? "" : "s"} · ${formatBytes(doc.size_bytes)}${doc.contains_images ? " · contains images" : ""}</div>
+            ${doc.fonts_not_embedded?.length ? `<div class="document-fonts">Fonts not embedded: ${escapeHtml(doc.fonts_not_embedded.join(", "))}. The two PDF engines may draw these glyphs differently, so the check can report differences that are not lost content.</div>` : ""}
           </div>
           <div class="page-controls">
             <label class="all-pages" for="all-pages-${doc.id}">
@@ -499,6 +874,10 @@
             body: file
           });
           state.documents.push(document);
+          if (!state.plateNameTouched && state.documents.length === 1) {
+            const stem = file.name.replace(/\.pdf$/i, "").replace(/[^A-Za-z0-9._ -]+/g, "-").trim().slice(0, 64);
+            if (stem) $("plate-name").value = stem;
+          }
           renderDocuments();
         } catch (error) {
           showError("upload-error", error.message);
@@ -511,17 +890,85 @@
     let calcTimer;
     function queueCalculate() {
       state.trialComplete = false;
+      refreshChangedMarkers();
       clearTimeout(calcTimer);
-      calcTimer = setTimeout(calculate, 180);
+      calcTimer = setTimeout(calculate, 220);
+    }
+    function clearMetrics() {
+      ["metric-pages", "metric-plates", "metric-reduction", "metric-size", "metric-slots", "metric-plate"]
+        .forEach((id) => { $(id).textContent = "—"; });
+    }
+    function drawSketch(plan) {
+      const svg = $("plate-sketch");
+      if (!plan) {
+        svg.setAttribute("viewBox", "0 0 100 100");
+        svg.innerHTML = '<rect class="sk-plate" x="0" y="0" width="100" height="100"/>';
+        svg.classList.remove("dark");
+        return;
+      }
+      const sk = plan.sketch;
+      const [W, H] = sk.plate_um;
+      svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      const rect = (r, cls) => `<rect class="${cls}" x="${r[0]}" y="${H - r[3]}" width="${r[2] - r[0]}" height="${r[3] - r[1]}"/>`;
+      const parts = [rect([0, 0, W, H], "sk-plate"), rect(sk.active_um, "sk-active")];
+      for (const [name, r] of Object.entries(sk.reserved)) {
+        if (name.endsWith("_band")) parts.push(rect(r, "sk-band"));
+      }
+      if (sk.placements.length) {
+        const d = sk.placements.map(([x0, y0, x1, y1]) => `M${x0} ${H - y1}h${x1 - x0}v${y1 - y0}h${-(x1 - x0)}Z`).join("");
+        parts.push(`<path class="sk-pages" d="${d}"/>`);
+      }
+      for (const [name, r] of Object.entries(sk.reserved)) {
+        if (name.startsWith("fiducial")) parts.push(rect(r, "sk-fid"));
+        if (name === "orientation_glyph") parts.push(rect(r, "sk-glyph"));
+      }
+      if (sk.title_rect_um) parts.push(rect(sk.title_rect_um, "sk-title"));
+      if (sk.nav_block_um) parts.push(rect(sk.nav_block_um, "sk-navtext"));
+      svg.innerHTML = parts.join("");
+      svg.classList.toggle("dark", plan.plate.polarity === "dark_field");
+      const more = sk.placements_total > sk.placements.length ? ` (first ${sk.placements.length} of ${sk.placements_total} placements drawn)` : "";
+      $("sketch-caption").textContent = `${plan.plate.width_mm} × ${plan.plate.height_mm} mm plate, ${plan.plate.cols} × ${plan.plate.rows} slots${more}. Title band, pages, guide band, corner marks, orientation glyph.`;
+    }
+    function renderPlan(plan) {
+      const p = plan.plate;
+      $("metric-pages").textContent = `${plan.source_pages} page${plan.source_pages === 1 ? "" : "s"}`;
+      $("metric-plates").textContent = `${plan.plates} · ${(plan.utilization * 100).toFixed(0)}% of first used`;
+      $("metric-reduction").textContent = plan.reduction ? `${plan.reduction}:1` : "—";
+      $("metric-size").textContent = plan.pseudopage_mm ? `${plan.pseudopage_mm[0]} × ${plan.pseudopage_mm[1]} mm` : "—";
+      $("metric-slots").textContent = `${plan.usable_slots_first_plate} of ${plan.theoretical_slots_first_plate}`;
+      $("metric-plate").textContent = `${p.width_mm} × ${p.height_mm} mm · ${p.polarity === "dark_field" ? "dark field" : "clear field"}${p.mirrored ? " · mirrored" : ""}`;
+      $("plan-status").textContent = plan.from_report
+        ? `Recorded plan: ${plan.source_pages} pages became ${plan.placements} plate placements.`
+        : `${plan.source_pages} pages become ${plan.placements} plate placements.`;
+      $("estimate").textContent = plan.estimate;
+      const o = plan.optics;
+      if (!o) { showNotice("optics-note"); $("optics-readout").innerHTML = "<span>Optics estimates are not available for this run.</span>"; }
+      else showNotice("optics-note", `<strong>Reader estimate.</strong> NA ${escapeHtml(String(o.polarity === "dark_field" ? "" : ""))}${$("numerical-aperture").value} at ${$("wavelength-nm").value} nm resolves about ${o.rayleigh_um} µm on the plate (Rayleigh). At ${o.reduction}:1 that is roughly ${o.reader_floor_pt} pt text; strokes of text below about ${o.writer_floor_pt} pt fall under the ${o.writer_floor_um} µm writer minimum and will raise manufacturing warnings. ${o.eye_limits_before_optics ? `At ${$("magnification").value}× the eye, not the lens, limits detail (${o.eye_limited_um} µm per eye pixel); about ${o.magnification_for_rayleigh}× would show everything the lens resolves.` : `At ${$("magnification").value}× the lens, not the eye, is the limit.`} <span class="muted">Heuristic; the build measures the real verdict.</span>`);
+      if (o) $("optics-readout").innerHTML = `
+        <span>Rayleigh limit on plate: <b>${o.rayleigh_um} µm</b></span>
+        <span>Eye-limited sampling at ${escapeHtml($("magnification").value)}×: <b>${o.eye_limited_um} µm</b>${o.eye_limits_before_optics ? " (eye limits before the lens)" : ""}</span>
+        <span>Smallest text likely readable: <b>~${o.reader_floor_pt} pt</b> · below the writer minimum: <b>~${o.writer_floor_pt} pt</b></span>`;
+      const t = plan.title;
+      const budget = [
+        `${p.edge_exclusion_mm} mm border`,
+        p.title_band_mm > 0 ? `${p.title_band_mm} mm title band${t ? ` (title ${(t.height_um / 1000).toFixed(2)} mm${t.shrunk_to_fit ? ", shrunk to fit" : ""}, ${t.align})` : ""}` : "no title band",
+        `${p.rows} rows of pages`,
+        p.nav_band_mm > 0 ? `${p.nav_band_mm} mm guide band` : "no guide band",
+        `${p.edge_exclusion_mm} mm border`
+      ];
+      $("title-readout").innerHTML = `<span>Top to bottom: <b>${escapeHtml(budget.join(" → "))}</b></span><span>Usable area ${p.active_mm[0]} × ${p.active_mm[1]} mm.</span>`;
+      const warnings = plan.warnings || [];
+      showNotice("calc-warnings", warnings.length ? `<strong>Before you build.</strong><ul>${warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join("")}</ul>` : "");
+      drawSketch(plan);
     }
     async function calculate() {
       showError("calc-error");
       if (!state.documents.length) {
         state.plan = null;
-        $("metric-pages").textContent = "—";
-        $("metric-plates").textContent = "—";
-        $("metric-reduction").textContent = "—";
-        $("metric-size").textContent = "—";
+        clearMetrics();
+        drawSketch(null);
+        showNotice("optics-note");
+        showNotice("calc-warnings");
         $("trial-button").disabled = true;
         $("build-button").disabled = true;
         return;
@@ -530,18 +977,12 @@
       try {
         const plan = await api("/api/calc", {
           method: "POST",
-          json: { documents: selections(), settings: settings() }
+          json: { documents: selections(), settings: settings(), plate_name: $("plate-name").value }
         });
         state.plan = plan;
-        $("metric-pages").textContent = `${plan.source_pages} page${plan.source_pages === 1 ? "" : "s"}`;
-        $("metric-plates").textContent = `${plan.plates} · ${(plan.utilization * 100).toFixed(0)}% of first used`;
-        $("metric-reduction").textContent = plan.reduction ? `${plan.reduction}:1` : "—";
-        $("metric-size").textContent = plan.pseudopage_mm ? `${plan.pseudopage_mm[0]} × ${plan.pseudopage_mm[1]} mm` : "—";
-        $("plan-status").textContent = `${plan.source_pages} pages become ${plan.placements} plate placements.`;
-        $("estimate").textContent = plan.estimate;
+        renderPlan(plan);
         $("trial-button").disabled = false;
         syncBuildButton();
-        if (plan.warnings.length) showError("calc-error", plan.warnings.join(" "));
       } catch (error) {
         state.plan = null;
         $("plan-status").textContent = "Fix the page selection or settings.";
@@ -558,6 +999,7 @@
         if (!confirm(`Build and verify all ${pages} selected page${pages === 1 ? "" : "s"}?${elapsed} Time and memory may not scale linearly for a full corpus.`)) return;
       }
       showError("run-error");
+      $("run-diagnostic").hidden = true;
       $("trial-button").disabled = true;
       $("build-button").disabled = true;
       state.runId = null;
@@ -616,6 +1058,7 @@
           syncBuildButton();
           setCancelButtonVisible(false);
           renderResult(run);
+          loadHistory();
           return;
         }
         if (run.status === "error" || run.status === "cancelled") {
@@ -624,6 +1067,11 @@
           syncBuildButton();
           setCancelButtonVisible(false);
           showError("run-error", run.error || run.detail);
+          if (run.diagnostic) {
+            $("run-diagnostic-text").textContent = run.diagnostic;
+            $("run-diagnostic").hidden = false;
+          }
+          loadHistory();
           return;
         }
         state.polling = setTimeout(pollRun, 700);
@@ -637,37 +1085,216 @@
       return `/api/artifact/${encodeURIComponent(runId)}/${encodeURIComponent(artifactId)}?token=${encodeURIComponent(token)}${download ? "&download=1" : ""}`;
     }
     function renderResult(run) {
+      state.currentRun = run;
       const result = run.result;
       const preview = run.artifacts.find((a) => a.kind === "preview");
+      const heatmaps = run.artifacts.filter((a) => a.kind === "heatmap");
       const findings = result.findings.map((item) => `
         <div class="finding">
           <strong>${item.level === "ok" ? "✓ " : item.level === "error" ? "Stop · " : "Review · "}${escapeHtml(item.text)}</strong>
           <small>${escapeHtml(item.action)}</small>
         </div>`).join("");
-      const downloads = run.artifacts.map((item) => `
+      const downloads = run.artifacts.filter((a) => a.kind !== "heatmap").map((item) => `
         <a class="download" href="${artifactUrl(run.id, item.id, true)}">${escapeHtml(item.label)}</a>`).join("");
       const unenforced = result.unenforced.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+      const tone = result.polarity === "dark_field"
+        ? "Dark-field plate: the text is clear glass in a chrome field and reads bright on dark."
+        : "Clear-field plate: the text is chrome on clear glass and reads dark on bright.";
+      const toneRows = (result.tone_truth_table || []).map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+      const heatmapBlock = heatmaps.length ? `
+        <details open>
+          <summary>Defect heatmaps (${heatmaps.length})</summary>
+          <p class="muted">Gray is the source page as the independent engine renders it, light blue is extra candidate ink, red marks the differences the checks counted. Zoom the image to judge whether a red mark is a lost glyph or a font-shape disagreement.</p>
+          <div class="heatmaps">${heatmaps.map((h) => `<figure><a href="${artifactUrl(run.id, h.id)}" target="_blank" rel="noopener"><img src="${artifactUrl(run.id, h.id)}" alt="${escapeHtml(h.label)}"></a><figcaption>${escapeHtml(h.label)}</figcaption></figure>`).join("")}</div>
+          <div class="legend"><span><i style="background:#bebebe"></i>source</span><span><i style="background:#aac8ff"></i>extra ink</span><span><i style="background:#dc0000"></i>counted difference</span></div>
+        </details>` : "";
       $("result-body").innerHTML = `
         <div class="verdict ${escapeHtml(result.status)}">
-          <div class="verdict-state">${escapeHtml(result.status.replaceAll("_", " "))}</div>
+          <div class="verdict-state">${escapeHtml(result.status.replaceAll("_", " "))}${run.trial ? " · one-page trial" : ""}</div>
           <h3>${escapeHtml(result.headline)}</h3>
           <p>${escapeHtml(result.meaning)}</p>
+          <div class="tone">${escapeHtml(tone)}${result.mirrored ? " The plate is mirrored." : ""}</div>
         </div>
         <div class="findings">${findings}</div>
         <div class="notice warning"><strong>Prototype candidate handoff.</strong> ${escapeHtml(result.candidate_handoff)}</div>
         ${preview ? `<img class="preview" src="${artifactUrl(run.id, preview.id)}" alt="Full plate preview">` : ""}
         <div class="downloads">${downloads}</div>
+        <div class="actions-row"><button class="quiet-button" id="reuse-settings" type="button">Reopen this run’s documents and settings</button></div>
+        ${heatmapBlock}
+        <details class="microscope" id="microscope-panel" ${run.simulation ? "open" : "hidden"}>
+          <summary>Look through the microscope</summary>
+          <p class="muted">Renders a region of the built plate through a diffraction-limited reader: change the magnification, numerical aperture, or wavelength and re-render without rebuilding. The plate geometry is fixed; only the optics move. Measured contrast is binned by stroke width against the criterion.</p>
+          <div id="microscope-controls"></div>
+          <div id="sim-output"></div>
+        </details>
         <details open>
           <summary>Why the “not checked” list is here</summary>
           <p>This list is intentional. Some manufacturing requirements cannot be enforced without a real mask-shop rule deck. Showing those gaps prevents a software pass from being mistaken for fabrication approval; the shop must confirm each applicable item.</p>
           <ul>${unenforced}</ul>
         </details>
         <details>
+          <summary>How the plate reads (tone truth table)</summary>
+          <ul>${toneRows}</ul>
+        </details>
+        <details>
           <summary>Reproduce this from the command line</summary>
           <p><code>${escapeHtml(run.cli_command)}</code></p>
         </details>`;
+      $("reuse-settings").addEventListener("click", async () => {
+        await restoreRun(run);
+        $("documents").scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      if (run.simulation) renderMicroscope(run);
       $("result-card").classList.add("visible");
       $("result-card").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function renderMicroscope(run) {
+      const sim = run.simulation;
+      const reader = sim.reader || {};
+      const def = sim.default || {};
+      const cells = sim.cells.map((c) => {
+        const value = `${c.plate}|${c.cell}`;
+        const selected = c.plate === def.plate && c.cell === def.cell ? " selected" : "";
+        const label = `${c.cell} · page ${c.page} of ${c.source}${sim.gds.length > 1 ? ` · plate ${c.plate}` : ""}${c.tier !== 1 ? ` · ${c.tier}× tier` : ""}`;
+        return `<option value="${escapeHtml(value)}"${selected}>${escapeHtml(label)}</option>`;
+      }).join("");
+      $("microscope-controls").innerHTML = `
+        <div class="field-grid thirds">
+          <div class="wide">
+            <label for="sim-cell">Page on the plate</label>
+            <select id="sim-cell">${cells}</select>
+          </div>
+          <div class="wide">
+            <label for="sim-region">Region: x, y, width, height in µm on the page (lower-left origin)</label>
+            <input id="sim-region" value="${escapeHtml((def.region_um || []).join(", "))}">
+            <div class="field-help">Default: ${escapeHtml(def.why || "the page center")}. A page here is about ${escapeHtml(String(sim.cells[0]?.page_um?.[0] || ""))} × ${escapeHtml(String(sim.cells[0]?.page_um?.[1] || ""))} µm.</div>
+          </div>
+          <div><label for="sim-mag">Magnification (×)</label><input id="sim-mag" type="number" min="1" max="2000" step="1" value="${escapeHtml(String(reader.magnification ?? 100))}"></div>
+          <div><label for="sim-na">Numerical aperture</label><input id="sim-na" type="number" min="0.02" max="1.4" step="0.01" value="${escapeHtml(String(reader.numerical_aperture ?? 0.25))}"></div>
+          <div><label for="sim-wl">Wavelength (nm)</label><input id="sim-wl" type="number" min="350" max="1100" step="5" value="${escapeHtml(String(reader.wavelength_nm ?? 580))}"></div>
+          <div><label for="sim-crit">Minimum readable contrast</label><input id="sim-crit" type="number" min="0.01" max="0.99" step="0.01" value="${escapeHtml(String(reader.contrast_criterion ?? 0.26))}"></div>
+          <div><label for="sim-defocus">Defocus (µm)</label><input id="sim-defocus" type="number" min="-200" max="200" step="1" value="0"></div>
+          <div><label>&nbsp;</label><button class="secondary" id="sim-button" type="button" style="width:100%">Render the view</button></div>
+        </div>`;
+      $("sim-button").addEventListener("click", () => simulate(run));
+    }
+    async function simulate(run) {
+      const button = $("sim-button");
+      button.disabled = true;
+      $("sim-output").innerHTML = '<p class="muted">Rendering the plate region through the reader… the first view of a large plate can take a while while the manufacturing file is opened.</p>';
+      try {
+        const [plate, cell] = $("sim-cell").value.split("|");
+        const region = $("sim-region").value.split(",").map((v) => Number(v.trim())).filter((v) => !Number.isNaN(v));
+        const result = await api(`/api/run/${encodeURIComponent(run.id)}/simulate`, {
+          method: "POST",
+          json: {
+            plate: Number(plate), cell, region: region.length === 4 ? region : null,
+            magnification: num("sim-mag"), numerical_aperture: num("sim-na"),
+            wavelength_nm: num("sim-wl"), contrast_criterion: num("sim-crit"),
+            defocus_um: num("sim-defocus")
+          }
+        });
+        const rows = result.contrast.bins.map((b) => `
+          <tr><td>${escapeHtml(b.stroke_um)} µm</td><td>${b.michelson.toFixed(3)}</td><td class="${b.michelson >= result.reader.contrast_criterion ? "ok" : "bad"}">${b.michelson >= result.reader.contrast_criterion ? "legible" : "below criterion"}</td></tr>`).join("");
+        const verdict = result.assessed
+          ? (result.pass ? "Some stroke bins meet the criterion" : "No stroke bin meets the criterion")
+          : "Too little ink in this region to measure — move the region onto text";
+        $("sim-output").innerHTML = `
+          <div class="sim-view">
+            <img src="data:image/png;base64,${result.png_base64}" alt="Simulated view through the microscope">
+            <div>
+              <span class="chip ${result.assessed ? (result.pass ? "pass" : "fail") : "unverified"}">${escapeHtml(verdict)}</span>
+              <p class="muted" style="margin:10px 0">${result.polarity === "dark_field" ? "Bright strokes in a dark field" : "Dark strokes on a bright field"} · ${result.region_um[2]} × ${result.region_um[3]} µm on the plate at ${result.reader.magnification}×, NA ${result.reader.numerical_aperture}, ${result.reader.wavelength_nm} nm${result.defocus_um ? `, defocus ${result.defocus_um} µm` : ""}.<br>
+              Rayleigh limit ${result.rayleigh_um} µm · eye-limited sampling ${result.eye_um_per_px} µm per eye pixel · ${(result.ink_fraction * 100).toFixed(1)}% ink.</p>
+              <table class="sim-table"><thead><tr><th>Stroke width</th><th>Michelson</th><th>vs ${result.reader.contrast_criterion}</th></tr></thead><tbody>${rows || '<tr><td colspan="3" class="muted">no strokes measured</td></tr>'}</tbody></table>
+              ${result.polarity === "dark_field" ? '<p class="muted" style="margin-top:8px">Dark-field contrast is measured on the complementary image, the same modulation depth as clear field; no perceptual credit is given for bright-on-dark reading.</p>' : ""}
+            </div>
+          </div>`;
+      } catch (error) {
+        $("sim-output").innerHTML = `<div class="error-box visible">${escapeHtml(error.message)}</div>`;
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function loadHistory() {
+      try {
+        const data = await api("/api/runs");
+        const runs = data.runs || [];
+        if (!runs.length) {
+          $("history-list").innerHTML = '<span class="muted">No runs yet. The trial you build first will appear here.</span>';
+          return;
+        }
+        $("history-list").innerHTML = runs.slice(0, 40).map((run) => {
+          const status = run.status === "complete" ? (run.result?.status || "unverified") : run.status;
+          const label = run.status === "complete" ? (run.result?.headline || status) : run.detail || status;
+          const canOpen = run.status === "complete";
+          return `
+            <div class="history-row">
+              <div>
+                <div><strong>${escapeHtml(run.plate_name || run.id)}</strong> · ${run.trial ? "one-page trial" : "full build"}</div>
+                <div class="meta">${escapeHtml(run.created || "")} · ${escapeHtml(run.id)}</div>
+              </div>
+              <span class="chip ${escapeHtml(status)}">${escapeHtml(label)}</span>
+              <button class="quiet-button" type="button" data-open="${escapeHtml(run.id)}" ${canOpen ? "" : "disabled"}>Open</button>
+            </div>`;
+        }).join("");
+        $("history-list").querySelectorAll("button[data-open]").forEach((button) => {
+          button.addEventListener("click", () => openRun(button.dataset.open));
+        });
+      } catch (error) {
+        $("history-list").innerHTML = `<span class="muted">${escapeHtml(error.message)}</span>`;
+      }
+    }
+    async function restoreRun(run) {
+      // documents (adopted from the run folder), page choices, settings, plate
+      // name, then the live plan; if the files are gone, the recorded plan
+      let restored;
+      try {
+        restored = await api(`/api/run/${encodeURIComponent(run.id)}/restore`, { method: "POST", json: {} });
+      } catch (error) {
+        restored = { documents: [], missing: [error.message] };
+      }
+      state.plateNameTouched = true;
+      if (run.plate_name) $("plate-name").value = run.plate_name;
+      applySettings(run.settings);
+      showError("upload-error");
+      if (restored.documents.length) {
+        state.documents = restored.documents;
+        renderDocuments();
+        for (const doc of restored.documents) {
+          if (doc.pages && doc.pages !== "all") {
+            $(`all-pages-${doc.id}`).checked = false;
+            $(`pages-${doc.id}`).disabled = false;
+            $(`pages-${doc.id}`).value = doc.pages;
+          }
+        }
+        await calculate();
+        // a finished run of this very selection stands in for the required trial
+        state.trialComplete = run.status === "complete" && Boolean(state.plan);
+        syncBuildButton();
+      } else if (run.plan) {
+        state.documents = [];
+        renderDocuments();
+        state.plan = null;
+        renderPlan(run.plan);
+        $("plan-status").textContent = "Recorded plan. The run’s PDFs are no longer in its folder; add them again to build.";
+        $("trial-button").disabled = true;
+        $("build-button").disabled = true;
+      }
+      if (restored.missing?.length) showError("upload-error", `Not restored: ${restored.missing.join("; ")}`);
+    }
+    async function openRun(runId) {
+      try {
+        const run = await api(`/api/run/${encodeURIComponent(runId)}`);
+        if (run.status !== "complete") throw new Error("That run has no result to show.");
+        state.runId = run.id;
+        await restoreRun(run);
+        renderResult(run);
+      } catch (error) {
+        $("history-list").insertAdjacentHTML("afterbegin", `<div class="error-box visible">${escapeHtml(error.message)}</div>`);
+      }
     }
 
     async function showDoctor() {
@@ -713,6 +1340,19 @@
       }
     }
 
+    async function init() {
+      try {
+        const preset = await api("/api/preset");
+        state.preset = preset;
+        buildChoices(preset);
+        applySettings(preset.settings);
+        decorateDefaults();
+      } catch (error) {
+        showError("calc-error", error.message);
+      }
+      loadHistory();
+    }
+
     $("dropzone").addEventListener("click", () => $("file-input").click());
     $("dropzone").addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") { event.preventDefault(); $("file-input").click(); }
@@ -729,7 +1369,18 @@
       });
     }
     $("dropzone").addEventListener("drop", (event) => uploadFiles([...event.dataTransfer.files]));
-    ["content-kind", "dpi", "min-feature", "nav-band"].forEach((id) => $(id).addEventListener("change", queueCalculate));
+    for (const id of [...Object.values(FIELDS), ...Object.values(CHECKS)]) {
+      $(id).addEventListener("change", queueCalculate);
+      if ($(id).tagName === "INPUT" && $(id).type === "number") $(id).addEventListener("input", queueCalculate);
+    }
+    for (const id of ["title-text", "nav-text", "plate-name"]) $(id).addEventListener("input", queueCalculate);
+    $("plate-name").addEventListener("input", () => { state.plateNameTouched = true; });
+    $("reset-all").addEventListener("click", () => {
+      applySettings(state.preset?.settings);
+      queueCalculate();
+    });
+    $("plate-size").addEventListener("change", syncPlateSize);
+    $("polarity").addEventListener("change", syncPolarityNote);
     $("trial-button").addEventListener("click", () => startRun(true));
     $("build-button").addEventListener("click", () => startRun(false));
     $("cancel-button").addEventListener("click", async () => {
@@ -741,8 +1392,11 @@
     $("doctor-button").addEventListener("click", showDoctor);
     $("doctor-close").addEventListener("click", () => $("doctor-dialog").close());
     $("quit-button").addEventListener("click", quitStele);
+    $("history-refresh").addEventListener("click", loadHistory);
     if (!token) {
       showError("upload-error", "This page is missing its private session token. Close it and launch Stele again.");
+    } else {
+      init();
     }
   </script>
 </body>
